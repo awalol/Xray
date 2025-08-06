@@ -2,6 +2,7 @@ package fr.atesab.xray.screen;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.serialization.Dynamic;
 import fr.atesab.xray.XrayMain;
 import fr.atesab.xray.utils.GuiUtils;
 import fr.atesab.xray.utils.GuiUtils.HSLResult;
@@ -15,17 +16,21 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.core.component.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.DyeItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.datafix.fixes.ItemStackComponentizationFix;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.alchemy.PotionContents;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+import java.util.stream.Stream;
 
 public class ColorSelector extends XrayScreen {
 
@@ -50,15 +55,21 @@ public class ColorSelector extends XrayScreen {
             new NativeImage(NativeImage.Format.RGBA, PICKER_S_SIZE_X, PICKER_SIZE_Y, false));
     private static final DynamicTexture PICKER_IMAGE_HL = new DynamicTexture(
             new NativeImage(NativeImage.Format.RGBA, PICKER_HL_SIZE_X, PICKER_SIZE_Y, false));
-    private static final ItemStack RANDOM_PICKER = Util.make(new ItemStack(Items.POTION), ItemStack::copyAndClear);
+    private static final ItemStack RANDOM_PICKER = Util.make(new ItemStack(Items.POTION), ItemStack::copy);
     private static final int RANDOM_PICKER_FREQUENCY = 3600;
 
     private static ItemStack updatePicker() {
-        CompoundTag tag = (CompoundTag) RANDOM_PICKER.getTags();
-        assert tag != null;
-//        tag.putInt("CustomPotionColor", GuiUtils.getTimeColor(RANDOM_PICKER_FREQUENCY, 100, 50));
-//        RANDOM_PICKER.set(tag);
-        return RANDOM_PICKER;
+        PotionContents data = RANDOM_PICKER.getItem().components().get(DataComponents.POTION_CONTENTS);
+        ItemStack stack = new ItemStack(RANDOM_PICKER.getItem());
+        stack.set(
+                DataComponents.POTION_CONTENTS,
+                new PotionContents(
+                        data.potion(),
+                        Optional.of(GuiUtils.getTimeColor(RANDOM_PICKER_FREQUENCY, 100, 50)),
+                        data.customEffects()
+                )
+        );
+        return stack;
     }
 
     private static int pickerHue;
@@ -155,24 +166,11 @@ public class ColorSelector extends XrayScreen {
     }
 
     @Override
-    public void tick() {
-//        tfr.tick();
-//        tfg.tick();
-//        tfb.tick();
-//        tfh.tick();
-//        tfs.tick();
-//        tfl.tick();
-//        hexColor.tick();
-//        intColor.tick();
-        super.tick();
-    }
-
-    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         // allow multiple color modifiers
         setPickerState(localHue, localSaturation, localLightness);
 
-        renderBackground(graphics,mouseX,mouseY,partialTicks);
+        renderBackground(graphics, mouseX, mouseY, partialTicks);
 
         if (!advanced) {
             // S PICKER

@@ -366,7 +366,7 @@ public class GuiUtils {
                 .setUv((u + (float) uWidth) * scaleX, v * scaleY).setColor(red, green, blue, alpha);
         bufferbuilder.addVertex(x, y, 0.0f).setUv(u * scaleX, v * scaleY)
                 .setColor(red, green, blue, alpha);
-        tesselator.clear();
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
     }
 
     /**
