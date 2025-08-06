@@ -1,37 +1,34 @@
 package fr.atesab.xray.screen;
 
-import fr.atesab.xray.utils.GuiUtils;
-import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.block.Block;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class BlockSelector extends Screen {
-    private final Screen parent;
+import fr.atesab.xray.utils.GuiUtils;
+import fr.atesab.xray.widget.XrayButton;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+
+public abstract class BlockSelector extends XrayScreen {
     private final List<Block> blocks;
     private final List<Block> visible = new ArrayList<>();
-    private TextFieldWidget searchBar;
-    private ButtonWidget nextPage;
-    private ButtonWidget lastPage;
+    private EditBox searchBar;
+    private XrayButton nextPage;
+    private XrayButton lastPage;
     private int elementByPage = 1;
     private int elementsX = 1;
     private int elementsY = 1;
     private int page = 0;
 
     public BlockSelector(Screen parent) {
-        super(Text.translatable("x13.mod.menu.selector"));
-        this.parent = parent;
+        super(Component.translatable("x13.mod.menu.selector"), parent);
         blocks = new ArrayList<>();
-        Registries.BLOCK.forEach(blocks::add);
+        BuiltInRegistries.BLOCK.forEach(blocks::add);
     }
 
     @Override
@@ -46,21 +43,20 @@ public abstract class BlockSelector extends Screen {
         int pageTop = height / 2 - sizeY / 2 - 24;
         int pageBottom = height / 2 + sizeY / 2 + 2;
 
-        searchBar = new TextFieldWidget(textRenderer, width / 2 - sizeX / 2, pageTop + 2, sizeX, 16,
-                Text.literal("")) {
+        searchBar = new EditBox(font, width / 2 - sizeX / 2, pageTop + 2, sizeX, 16, Component.literal("")) {
             @Override
             public boolean mouseClicked(double mouseX, double mouseY, int button) {
                 if (button == 1 && mouseX >= this.getX() && mouseX <= this.getX() + this.width && mouseY >= this.getY()
                         && mouseY <= this.getY() + this.height) {
-                    setText("");
+                    setValue("");
                     return true;
                 }
                 return super.mouseClicked(mouseX, mouseY, button);
             }
 
             @Override
-            public void setText(String text) {
-                super.setText(text);
+            public void setValue(String text) {
+                super.setValue(text);
                 updateSearch();
             }
 
@@ -83,22 +79,23 @@ public abstract class BlockSelector extends Screen {
             }
         };
 
-        lastPage = XrayButton.builder(Text.literal("<-"), button -> {
+        lastPage = new XrayButton(width / 2 - 124, pageBottom, 20, 20, Component.literal("<-"), b -> {
             page--;
             updateArrows();
-        }).dimensions(width / 2 - 124, pageBottom, 20, 20).build();
-
-        ButtonWidget cancelBtn = XrayButton.builder(Text.translatable("gui.cancel"), button -> client.setScreen(parent)).dimensions(width / 2 - 100, pageBottom, 200, 20).build();
-
-        nextPage = XrayButton.builder(Text.literal("->"), button -> {
+        });
+        XrayButton cancelBtn = new XrayButton(width / 2 - 100, pageBottom, 200, 20, Component.translatable("gui.cancel"),
+                b -> {
+                    getMinecraft().setScreen(parent);
+                });
+        nextPage = new XrayButton(width / 2 + 104, pageBottom, 20, 20, Component.literal("->"), b -> {
             page++;
             updateArrows();
-        }).dimensions(width / 2 + 104, pageBottom, 20, 20).build();
+        });
 
-        addSelectableChild(searchBar);
-        addDrawableChild(lastPage);
-        addDrawableChild(cancelBtn);
-        addDrawableChild(nextPage);
+        addWidget(searchBar);
+        addRenderableWidget(lastPage);
+        addRenderableWidget(cancelBtn);
+        addRenderableWidget(nextPage);
 
         updateArrows();
         updateSearch();
@@ -112,9 +109,9 @@ public abstract class BlockSelector extends Screen {
     }
 
     public void updateSearch() {
-        String query = searchBar.getText().toLowerCase();
+        String query = searchBar.getValue().toString().toLowerCase();
         visible.clear();
-        blocks.stream().filter(block -> I18n.translate(block.getTranslationKey()).toLowerCase().contains(query))
+        blocks.stream().filter(block -> I18n.get(block.getDescriptionId()).toLowerCase().contains(query))
                 .forEach(visible::add);
         page = Math.min(visible.size(), page);
         updateArrows();
@@ -125,9 +122,9 @@ public abstract class BlockSelector extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float partialTick) {
-        renderInGameBackground(context);
-        searchBar.render(context, mouseX, mouseY, partialTick);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+        searchBar.render(graphics, mouseX, mouseY, partialTick);
         int left = width / 2 - elementsX * 18 / 2;
         int top = height / 2 - elementsY * 18 / 2;
 
@@ -149,13 +146,13 @@ public abstract class BlockSelector extends Screen {
                 color = 0x44666699;
             }
 
-            context.fill(x, y, x + 18, y + 18, color);
-            GuiUtils.renderItemIdentity(context, stack, x + 1, y + 1);
+            graphics.fill(x, y, x + 18, y + 18, color);
+            GuiUtils.renderItemIdentity(graphics, stack, x + 1, y + 1);
         }
-        super.render(context, mouseX, mouseY, partialTick);
+        super.render(graphics, mouseX, mouseY, partialTick);
 
         if (hoveredBlock != null) {
-            context.drawTooltip(textRenderer, Text.translatable(hoveredBlock.getTranslationKey()), mouseX, mouseY);
+            graphics.renderTooltip(font, Component.translatable(hoveredBlock.getDescriptionId()), mouseX, mouseY);
         }
     }
 
@@ -176,7 +173,7 @@ public abstract class BlockSelector extends Screen {
             if (mouseX >= x && mouseX <= x + 18 && mouseY >= y && mouseY <= y + 18) {
                 if (button == 0) { // left click: select
                     save(b);
-                    client.setScreen(parent);
+                    getMinecraft().setScreen(parent);
                     return true;
                 }
                 return false;
@@ -188,13 +185,8 @@ public abstract class BlockSelector extends Screen {
     /**
      * save the selected block (only call when a Block is selected, doesn't call
      * after a cancel)
-     *
+     * 
      * @param selection the selected block
      */
     protected abstract void save(Block selection);
-
-    @Override
-    public void applyBlur(){
-
-    }
 }

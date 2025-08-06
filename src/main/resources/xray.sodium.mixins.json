@@ -8,7 +8,6 @@
     "MixinBlock",
     "MixinBlockOcclusionCache",
     "MixinMinecraftClient",
-    "MixinInputUtil",
     "MixinLightmapTextureManager"
   ],
   "injectors": {

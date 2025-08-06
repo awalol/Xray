@@ -4,38 +4,38 @@ import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
 import fr.atesab.xray.screen.ColorSelector;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.PressableWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
-public class ColorSelectorWidget extends PressableWidget {
+public class ColorSelectorWidget extends AbstractButton {
 
-    private final IntConsumer setter;
-    private final IntSupplier getter;
-    private final MinecraftClient client;
-    private final Screen parent;
+    private IntConsumer setter;
+    private IntSupplier getter;
+    private Minecraft minecraft;
+    private Screen parent;
 
-    public ColorSelectorWidget(int x, int y, int w, int h, Text text, MinecraftClient mc, Screen parent,
+    public ColorSelectorWidget(int x, int y, int w, int h, Component text, Minecraft mc, Screen parent,
             IntConsumer setter, IntSupplier getter) {
         super(x, y, w, h, text);
         this.setter = setter;
         this.getter = getter;
-        this.client = mc;
+        this.minecraft = mc;
         this.parent = parent;
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        this.appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {
+        this.defaultButtonNarrationText(narrationElementOutput);
     }
 
     @Override
-    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        boolean hovered = isHovered();
+    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        boolean hovered = isHoveredOrFocused();
         int color = getter.getAsInt() & 0xFFFFFF;
         if (hovered) {
             color |= 0xaa000000;
@@ -43,17 +43,18 @@ public class ColorSelectorWidget extends PressableWidget {
             color |= 0x88000000;
         }
 
-        context.fill(getX(), getY(), getX() + width, getY() + height, color);
+        int x = getX();
+        int y = getY();
 
-        Text message = getMessage();
-        TextRenderer textRenderer = client.textRenderer;
-        context.drawCenteredTextWithShadow(textRenderer, message, getX() + width / 2, getY() + height / 2 - textRenderer.fontHeight / 2,
-                0xFFFFFFFF);
+        graphics.fill(x, y, x + width, y + height, color);
+
+        Component message = getMessage();
+        Font font = minecraft.font;
+        graphics.drawCenteredString(font, message, x + width / 2, y + height / 2 - font.lineHeight / 2, 0xFFFFFFFF);
     }
 
     @Override
     public void onPress() {
-        client.setScreen(new ColorSelector(parent, setter, getter.getAsInt()));
+        minecraft.setScreen(new ColorSelector(parent, setter, getter.getAsInt()));
     }
-
 }

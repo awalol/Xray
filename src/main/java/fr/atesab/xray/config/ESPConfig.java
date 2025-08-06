@@ -1,43 +1,41 @@
 package fr.atesab.xray.config;
 
+import com.google.gson.annotations.Expose;
+import fr.atesab.xray.color.EntityTypeIcon;
+import fr.atesab.xray.color.EnumElement;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.google.gson.annotations.Expose;
-
-import fr.atesab.xray.color.EntityTypeIcon;
-import fr.atesab.xray.color.EnumElement;
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-
-import net.minecraft.util.Identifier;
-
 public class ESPConfig extends AbstractModeConfig implements Cloneable {
     public enum Template implements EnumElement {
         BLANK("x13.mod.template.blank", new ItemStack(Items.PAPER), new ESPConfig()),
-        PLAYER("x13.mod.esp.template.player", new ItemStack(Items.PLAYER_HEAD), 
-            new ESPConfig(0, 0, "Player", EntityType.PLAYER)
+        PLAYER("x13.mod.esp.template.player", new ItemStack(Items.PLAYER_HEAD),
+                new ESPConfig(0, 0, "Player", EntityType.PLAYER)
         ),
-        WITHER("x13.mod.esp.template.wither", new ItemStack(Items.WITHER_SKELETON_SKULL), 
-            new ESPConfig(0, 0, "Wither", EntityType.WITHER, EntityType.WITHER_SKELETON)
+        WITHER("x13.mod.esp.template.wither", new ItemStack(Items.WITHER_SKELETON_SKULL),
+                new ESPConfig(0, 0, "Wither", EntityType.WITHER, EntityType.WITHER_SKELETON)
         ),
-        AGGRESIVE("x13.mod.esp.template.aggresive", new ItemStack(Items.CREEPER_HEAD), () -> 
-             new ESPConfig(EntityTypeIcon.getEntityOfType(SpawnGroup.MONSTER), Collections.emptyList())
+        AGGRESIVE("x13.mod.esp.template.aggresive", new ItemStack(Items.CREEPER_HEAD), () ->
+                new ESPConfig(EntityTypeIcon.getEntityOfType(MobCategory.MONSTER), Collections.emptyList())
         ),
         PASSIVE("x13.mod.esp.template.passive", new ItemStack(Items.POPPY), () ->
-                new ESPConfig(EntityTypeIcon.getEntityOfType(SpawnGroup.CREATURE), Collections.emptyList())
+                new ESPConfig(EntityTypeIcon.getEntityOfType(MobCategory.CREATURE), Collections.emptyList())
         ),
         CHEST("x13.mod.esp.template.chest", new ItemStack(Items.CHEST), () ->
                 new ESPConfig(BlockEntityType.CHEST, BlockEntityType.ENDER_CHEST, BlockEntityType.HOPPER, BlockEntityType.TRAPPED_CHEST, BlockEntityType.MOB_SPAWNER)
         );
 
-        private final Text title;
+        private final Component title;
         private final ItemStack icon;
         private final Supplier<ESPConfig> cfg;
 
@@ -46,13 +44,13 @@ public class ESPConfig extends AbstractModeConfig implements Cloneable {
         }
 
         Template(String translation, ItemStack icon, Supplier<ESPConfig> cfg) {
-            this.title = Text.translatable(translation);
+            this.title = Component.translatable(translation);
             this.icon = icon;
             this.cfg = cfg;
         }
 
         @Override
-        public Text getTitle() {
+        public Component getTitle() {
             return title;
         }
 
@@ -97,6 +95,7 @@ public class ESPConfig extends AbstractModeConfig implements Cloneable {
         this.entities = new SyncedEntityTypeList(entities);
         this.blockEntities = new SyncedBlockEntityTypeList();
     }
+
     public ESPConfig(BlockEntityType<?>... entities) {
         super();
         this.entities = new SyncedEntityTypeList();
@@ -159,16 +158,17 @@ public class ESPConfig extends AbstractModeConfig implements Cloneable {
     public boolean shouldTag(EntityType<?> type) {
         if (!isEnabled())
             return false;
-        Identifier id = Registries.ENTITY_TYPE.getId(type);
+        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         if (id == null) {
             return false;
         }
         return entities.contains(id.toString());
     }
+
     public boolean shouldTag(BlockEntityType<?> type) {
         if (!isEnabled())
             return false;
-        Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(type);
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(type);
         if (id == null) {
             return false;
         }

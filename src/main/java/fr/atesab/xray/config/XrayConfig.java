@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
@@ -13,6 +15,7 @@ import com.google.gson.annotations.Expose;
 import fr.atesab.xray.color.Skin;
 import fr.atesab.xray.utils.GuiUtils;
 import fr.atesab.xray.utils.MergedIterable;
+import fr.atesab.xray.utils.XrayUtils;
 
 public class XrayConfig implements Cloneable {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().enableComplexMapKeySerialization()
@@ -93,7 +96,7 @@ public class XrayConfig implements Cloneable {
     /**
      * @return the selected block mode, or null if no mode is selected
      */
-    public BlockConfig getSelectedBlockMode() {
+    public @Nullable BlockConfig getSelectedBlockMode() {
         return getBlockConfigs().stream().filter(BlockConfig::isEnabled).findAny().orElse(null);
     }
 

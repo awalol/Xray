@@ -9,8 +9,8 @@ import fr.atesab.xray.color.EnumElement;
 import fr.atesab.xray.screen.page.PagedElement;
 import fr.atesab.xray.screen.page.PagedScreen;
 import fr.atesab.xray.widget.LongItemWidget;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public abstract class EnumSelector<E extends EnumElement> extends PagedScreen<E> {
 
@@ -27,7 +27,7 @@ public abstract class EnumSelector<E extends EnumElement> extends PagedScreen<E>
         public void init() {
             btn = addSubWidget(new LongItemWidget(width / 2 - 100, 0, 200, 20, e.getTitle(), e.getIcon(), () -> {
                 select(e);
-                client.setScreen(parent);
+                minecraft.setScreen(parent);
             }));
             super.init();
         }
@@ -39,16 +39,16 @@ public abstract class EnumSelector<E extends EnumElement> extends PagedScreen<E>
         }
     }
 
-    public EnumSelector(Text title, Screen parent, Stream<E> stream) {
+    public EnumSelector(Component title, Screen parent, Stream<E> stream) {
         super(title, parent, 24, stream);
         removeDoneButton();
     }
 
-    public EnumSelector(Text title, Screen parent, E[] array) {
+    public EnumSelector(Component title, Screen parent, E[] array) {
         this(title, parent, Arrays.stream(array));
     }
 
-    public EnumSelector(Text title, Screen parent, Collection<E> list) {
+    public EnumSelector(Component title, Screen parent, Collection<E> list) {
         this(title, parent, list.stream());
     }
 

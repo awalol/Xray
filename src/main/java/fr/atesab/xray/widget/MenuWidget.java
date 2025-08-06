@@ -1,20 +1,19 @@
 package fr.atesab.xray.widget;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-
+import com.mojang.blaze3d.vertex.PoseStack;
 import fr.atesab.xray.utils.GuiUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.PressableWidget;
-import net.minecraft.client.render.item.ItemRenderer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
-public class MenuWidget extends PressableWidget {
+public class MenuWidget extends AbstractButton {
     public interface OnPress {
         void onPress();
     }
@@ -22,16 +21,16 @@ public class MenuWidget extends PressableWidget {
     private final ItemStack itemStack;
     private final OnPress onPress;
 
-    public MenuWidget(int x, int y, int w, int h, Text text, ItemStack stack, OnPress onPress) {
+    public MenuWidget(int x, int y, int w, int h, Component text, ItemStack stack, OnPress onPress) {
         super(x, y, w, h, text);
         this.onPress = onPress;
         this.itemStack = stack;
     }
 
     @Override
-    public void renderWidget(DrawContext graphics, int mouseX, int mouseY, float delta) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        boolean hovered = isHovered();
+    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        Minecraft client = Minecraft.getInstance();
+        boolean hovered = isHoveredOrFocused();
         int centerX = getX() + width / 2;
         int color;
         if (hovered) {
@@ -42,37 +41,40 @@ public class MenuWidget extends PressableWidget {
 
         graphics.fill(getX(), getY(), getX() + width, getY() + height, color);
 
-        Text message = getMessage();
-        TextRenderer textRenderer = client.textRenderer;
-        ItemRenderer renderer = client.getItemRenderer();
+        Component message = getMessage();
+        Font font = client.font;
         Matrix4fStack modelStack = RenderSystem.getModelViewStack();
-        modelStack.pushMatrix();
 
         int stackCenterX = getX() + width / 2;
         int stackCenterY = getY() + height * 2 / 5;
+
+        modelStack.pushMatrix();
         modelStack.translate(stackCenterX, stackCenterY, 0);
         float scaleX = getWidth() * 3 / 4f / 16f;
         float scaleY = getHeight() * 3 / 4f / 16f;
         modelStack.scale(scaleX, scaleY, 1);
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.assertOnRenderThread();
         GuiUtils.renderItemIdentity(graphics, itemStack, -8, -8);
         modelStack.popMatrix();
+        RenderSystem.applyModelViewMatrix();
 
-        MatrixStack stack = graphics.getMatrices();
-        stack.push();
+        PoseStack stack = graphics.pose();
+        stack.pushPose();
         stack.translate(centerX, getY() + getHeight(), 0);
-        float scale = getHeight() / 7f / textRenderer.fontHeight;
+        float scale = getHeight() / 7f / font.lineHeight;
         stack.scale(scale, scale, 1);
-        int textColor = this.active ? 16777215 : 10526880;
-        graphics.drawCenteredTextWithShadow(textRenderer, message, 0, -textRenderer.fontHeight, textColor);
+        graphics.drawCenteredString(font, message, 0, -font.lineHeight, packedFGColor);
         stack.scale(1 / scale, 1 / scale, 1);
         stack.translate(-centerX, -getY() - getHeight(), 0);
-        stack.pop();
+        stack.popPose();
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        this.appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput elementOutput) {
+        this.defaultButtonNarrationText(elementOutput);
     }
+
 
     @Override
     public void onPress() {

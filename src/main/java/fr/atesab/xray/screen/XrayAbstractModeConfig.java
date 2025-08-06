@@ -1,53 +1,56 @@
 package fr.atesab.xray.screen;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import fr.atesab.xray.config.AbstractModeConfig;
 import fr.atesab.xray.widget.ColorSelectorWidget;
 import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public class XrayAbstractModeConfig extends XrayScreen {
-    private AbstractModeConfig cfg;
-    private TextFieldWidget nameBox;
+    private final AbstractModeConfig cfg;
+    private EditBox nameBox;
     private int color;
 
     protected XrayAbstractModeConfig(Screen parent, AbstractModeConfig cfg) {
-        super(Text.translatable("x13.mod.mode.edit"), parent);
+        super(Component.translatable("x13.mod.mode.edit"), parent);
         this.cfg = cfg;
         this.color = cfg.getColor();
     }
 
     @Override
-    public void resize(MinecraftClient p_96575_, int p_96576_, int p_96577_) {
-        String s = nameBox.getText();
+    public void resize(Minecraft p_96575_, int p_96576_, int p_96577_) {
+        String s = nameBox.getValue();
         super.resize(p_96575_, p_96576_, p_96577_);
-        nameBox.setText(s);
+        nameBox.setValue(s);
     }
 
     @Override
     protected void init() {
-        addDrawableChild(
-                XrayButton.builder(Text.translatable("gui.done"), btn -> {
-                    cfg.setName(nameBox.getText());
+        addRenderableWidget(
+                new XrayButton(width / 2 - 100, height / 2 + 24, 200, 20, Component.translatable("gui.done"), btn -> {
+                    cfg.setName(nameBox.getValue());
                     cfg.setColor(color);
-                    client.setScreen(parent);
-                }).dimensions(width / 2 - 100, height / 2 + 24, 200, 20).build());
-        addDrawableChild(
-                XrayButton.builder(Text.translatable("gui.cancel"), btn -> client.setScreen(parent)).dimensions(width / 2 - 100, height / 2 + 48, 200, 20).build());
+                    minecraft.setScreen(parent);
+                }));
+        addRenderableWidget(
+                new XrayButton(width / 2 - 100, height / 2 + 48, 200, 20, Component.translatable("gui.cancel"), btn -> {
+                    minecraft.setScreen(parent);
+                }));
 
-        nameBox = new TextFieldWidget(textRenderer, width / 2 - 98, height / 2 - 22, 196, 16, Text.literal(""));
+        nameBox = new EditBox(font, width / 2 - 98, height / 2 - 22, 196, 16, Component.literal(""));
         nameBox.setMaxLength(128);
-        nameBox.setText(cfg.getModeName());
+        nameBox.setValue(cfg.getModeName());
+        nameBox.setFocused(true);
 
-        addDrawableChild(new ColorSelectorWidget(width / 2 - 100, height / 2, 200, 20,
-                Text.translatable("x13.mod.color.title"), client, this, c -> color = c, () -> color));
+        addRenderableWidget(new ColorSelectorWidget(width / 2 - 100, height / 2, 200, 20,
+                Component.translatable("x13.mod.color.title"), minecraft, this, c -> color = c, () -> color));
 
-        addSelectableChild(nameBox);
+        addWidget(nameBox);
         setInitialFocus(nameBox);
 
         super.init();
@@ -55,13 +58,14 @@ public class XrayAbstractModeConfig extends XrayScreen {
 
     @Override
     public void tick() {
+//        nameBox.tick();
         super.tick();
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderInGameBackground(context);
-        nameBox.render(context, mouseX, mouseY, delta);
-        super.render(context, mouseX, mouseY, delta);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        renderBackground(graphics,mouseX,mouseY,delta);
+        nameBox.render(graphics, mouseX, mouseY, delta);
+        super.render(graphics, mouseX, mouseY, delta);
     }
 }

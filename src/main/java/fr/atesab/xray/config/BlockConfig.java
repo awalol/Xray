@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import com.google.gson.annotations.Expose;
 
-import net.minecraft.registry.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -12,17 +12,16 @@ import fr.atesab.xray.SideRenderer;
 import fr.atesab.xray.XrayMain;
 import fr.atesab.xray.color.EnumElement;
 import fr.atesab.xray.view.ViewMode;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.text.Text;
-
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class BlockConfig extends AbstractModeConfig implements SideRenderer, Cloneable {
     public enum Template implements EnumElement {
@@ -83,7 +82,7 @@ public class BlockConfig extends AbstractModeConfig implements SideRenderer, Clo
                 0,
                 "Cave",
                 ViewMode.INCLUSIVE,
-                Blocks.DIRT,              Blocks.SHORT_GRASS,            Blocks.GRAVEL,          Blocks.GRASS_BLOCK,
+                Blocks.DIRT,              Blocks.GRASS_BLOCK,            Blocks.GRAVEL,          Blocks.GRASS_BLOCK,
                 Blocks.DIRT_PATH,         Blocks.SAND,             Blocks.SANDSTONE,       Blocks.RED_SAND
             )),
         REDSTONE("x13.mod.template.redstone", new ItemStack(Blocks.REDSTONE_ORE), new BlockConfig(
@@ -128,18 +127,18 @@ public class BlockConfig extends AbstractModeConfig implements SideRenderer, Clo
             ));
         // @formatter:on
 
-        private Text title;
+        private Component title;
         private ItemStack icon;
         private BlockConfig cfg;
 
         Template(String translation, ItemStack icon, BlockConfig cfg) {
-            this.title = Text.translatable(translation);
+            this.title = Component.translatable(translation);
             this.icon = icon;
             this.cfg = cfg;
         }
 
         @Override
-        public Text getTitle() {
+        public Component getTitle() {
             return title;
         }
 
@@ -206,13 +205,14 @@ public class BlockConfig extends AbstractModeConfig implements SideRenderer, Clo
     }
 
     @Override
-    public void shouldSideBeRendered(BlockState state, BlockState adjacentState, CallbackInfoReturnable<Boolean> ci) {
+    public void shouldSideBeRendered(BlockState adjacentState, BlockGetter blockState, BlockPos blockAccess,
+            Direction pos, CallbackInfoReturnable<Boolean> ci) {
         if (!isEnabled())
             return;
 
-        String name = Registries.BLOCK.getId(state.getBlock()).toString();
+        String name = Objects.requireNonNullElse(BuiltInRegistries.BLOCK.getKey(adjacentState.getBlock()), "").toString();
         boolean present = blocks.contains(name);
-        boolean shouldRender = viewMode.getViewer().shouldRenderSide(present, state, adjacentState);
+        boolean shouldRender = viewMode.getViewer().shouldRenderSide(present, adjacentState, blockState, blockAccess, pos);
         ci.setReturnValue(shouldRender);
     }
 
@@ -236,7 +236,7 @@ public class BlockConfig extends AbstractModeConfig implements SideRenderer, Clo
         mod.internalFullbright();
 
         if (reloadRenderers)
-            MinecraftClient.getInstance().worldRenderer.reload();
+            Minecraft.getInstance().levelRenderer.allChanged();
     }
 
     public ViewMode getViewMode() {

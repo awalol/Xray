@@ -2,11 +2,10 @@ package fr.atesab.xray.color;
 
 import fr.atesab.xray.config.LocationConfig;
 import fr.atesab.xray.utils.GuiUtils;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,13 +17,13 @@ import java.util.List;
  */
 public class TextHudBuffer {
     private static final int PADDING = 4;
-    private final List<MutableText> lines = new ArrayList<>();
+    private final List<MutableComponent> lines = new ArrayList<>();
 
     /**
      * begin a new line
      */
     public void newLine() {
-        lines.add(Text.empty());
+        lines.add(Component.empty());
     }
 
     /**
@@ -32,7 +31,7 @@ public class TextHudBuffer {
      *
      * @param text text
      */
-    public void append(Text text) {
+    public void append(Component text) {
         if (lines.isEmpty()) {
             newLine();
         }
@@ -42,13 +41,13 @@ public class TextHudBuffer {
     /**
      * draw the buffer
      *
-     * @param context  context
+     * @param graphics     graphics
      * @param screenWidth  screen width
      * @param screenHeight screen height
-     * @param cfg    location config
-     * @param render text renderer
+     * @param cfg          location config
+     * @param render       text renderer
      */
-    public void draw(DrawContext context, int screenWidth, int screenHeight, LocationConfig cfg, TextRenderer render) {
+    public void draw(GuiGraphics graphics, int screenWidth, int screenHeight, LocationConfig cfg, Font render) {
         if (lines.isEmpty()) {
             return; // ignore
         }
@@ -56,7 +55,7 @@ public class TextHudBuffer {
         int width = screenWidth - PADDING * 2;
         int height = screenHeight - PADDING * 2;
 
-        int fontSize = (int) (cfg.getFontSizeMultiplier() * render.fontHeight);
+        int fontSize = (int) (cfg.getFontSizeMultiplier() * render.lineHeight);
 
         LocationConfig.LocationLocation loc = cfg.getLocation();
         LocationConfig.TextAlignX alignX = loc.getAlignX();
@@ -70,16 +69,16 @@ public class TextHudBuffer {
         };
 
         for (int i = 0; i < lines.size(); i++) {
-            MutableText text = lines.get(i);
+            MutableComponent text = lines.get(i);
 
             // TODO: add color selector in the location config?
             switch (alignX) {
                 case LEFT ->
-                        GuiUtils.drawTextComponentScaled(context, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
+                        GuiUtils.drawTextComponentScaled(graphics, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
                 case CENTER ->
-                        GuiUtils.drawCenteredTextComponentScaled(context, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
+                        GuiUtils.drawCenteredTextComponentScaled(graphics, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
                 case RIGHT ->
-                        GuiUtils.drawRightTextComponentScaled(context, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
+                        GuiUtils.drawRightTextComponentScaled(graphics, x, y + i * (fontSize + 1), fontSize, text, 0xffffffff);
             }
         }
     }

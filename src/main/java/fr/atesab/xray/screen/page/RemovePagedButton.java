@@ -1,19 +1,19 @@
 package fr.atesab.xray.screen.page;
 
-import net.minecraft.client.gui.widget.ButtonWidget;
+import fr.atesab.xray.widget.XrayButton;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
-public class RemovePagedButton extends ButtonWidget {
-    private static final Text REMOVE_COMPONENT = Text.literal("-").formatted(Formatting.RED);
-    private static final ButtonWidget.PressAction EMPTY_PRESS = btn -> {
+public class RemovePagedButton extends XrayButton {
+    private static final Component REMOVE_COMPONENT = Component.literal("-").withStyle(ChatFormatting.RED);
+    private static final Button.OnPress EMPTY_PRESS = btn -> {
     };
 
-    private PagedScreen<?> parent;
+    private final PagedScreen<?> parent;
 
     public RemovePagedButton(PagedScreen<?> parent, int x, int y, int w, int h) {
-        super(x, y, w, h, REMOVE_COMPONENT, EMPTY_PRESS, DEFAULT_NARRATION_SUPPLIER);
+        super(x, y, w, h, REMOVE_COMPONENT, EMPTY_PRESS);
         this.parent = parent;
     }
 

@@ -2,21 +2,21 @@ package fr.atesab.xray.screen.page;
 
 import java.util.function.Supplier;
 
-import net.minecraft.client.gui.widget.ButtonWidget;
+import fr.atesab.xray.widget.XrayButton;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
-public class AddPagedButton<E> extends ButtonWidget {
-    private static final Text ADD_COMPONENT = Text.literal("+").formatted(Formatting.GREEN);
-    private static final ButtonWidget.PressAction EMPTY_PRESS = btn -> {
+public class AddPagedButton<E> extends XrayButton {
+    private static final Component ADD_COMPONENT = Component.literal("+").withStyle(ChatFormatting.GREEN);
+    private static final Button.OnPress EMPTY_PRESS = btn -> {
     };
 
-    private PagedScreen<E> parent;
-    private Supplier<PagedElement<E>> eSupplier;
+    private final PagedScreen<E> parent;
+    private final Supplier<PagedElement<E>> eSupplier;
 
     public AddPagedButton(PagedScreen<E> parent, int x, int y, int w, int h, Supplier<PagedElement<E>> eSupplier) {
-        super(x, y, w, h, ADD_COMPONENT, EMPTY_PRESS, DEFAULT_NARRATION_SUPPLIER);
+        super(x, y, w, h, ADD_COMPONENT, EMPTY_PRESS);
         this.parent = parent;
         this.eSupplier = eSupplier;
     }

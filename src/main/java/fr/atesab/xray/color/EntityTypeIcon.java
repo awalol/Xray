@@ -4,14 +4,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnGroup;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.SpawnEggItem;
-import net.minecraft.registry.Registries;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.entity.MobCategory;
 
 public record EntityTypeIcon(EntityType<?> entity, ItemStack icon) {
 
@@ -48,7 +49,7 @@ public record EntityTypeIcon(EntityType<?> entity, ItemStack icon) {
     public static final EntityTypeIcon FALLING_BLOCK = register(EntityType.FALLING_BLOCK, Blocks.SAND);
     public static final EntityTypeIcon FIREBALL = register(EntityType.FIREBALL, Items.FIRE_CHARGE);
     public static final EntityTypeIcon FIREWORK_ROCKET = register(EntityType.FIREWORK_ROCKET, Items.FIREWORK_ROCKET);
-    public static final EntityTypeIcon BOAT = register(EntityType.OAK_BOAT, Items.OAK_BOAT);
+    public static final EntityTypeIcon BOAT = register(EntityType.BOAT, Items.OAK_BOAT);
     public static final EntityTypeIcon SPIDER = register(EntityType.SPIDER, Items.SPIDER_EYE);
     public static final EntityTypeIcon POTION = register(EntityType.POTION, Items.POTION);
     public static final EntityTypeIcon PUFFERFISH = register(EntityType.PUFFERFISH, Items.PUFFERFISH);
@@ -61,22 +62,21 @@ public record EntityTypeIcon(EntityType<?> entity, ItemStack icon) {
     public static final EntityTypeIcon TNT = register(EntityType.TNT, Items.TNT);
     public static final EntityTypeIcon WOLF = register(EntityType.WOLF, Items.BONE);
 
-    public static EntityTypeIcon register(EntityType<?> type, ItemConvertible icon) {
+    public static EntityTypeIcon register(EntityType<?> type, ItemLike icon) {
         return register(type, new ItemStack(icon));
     }
 
     public static EntityTypeIcon register(EntityType<?> type, ItemStack icon) {
-        ICONS.put(type.getTranslationKey(), icon);
+        ICONS.put(type.getDescriptionId(), icon);
         return new EntityTypeIcon(type, icon);
     }
 
-    @SuppressWarnings("deprecation")
     public static ItemStack getIcon(EntityType<?> type) {
-        ItemStack icon = ICONS.get(type.getTranslationKey());
+        ItemStack icon = ICONS.get(type.getDescriptionId());
         if (icon != null)
             return icon;
 
-        SpawnEggItem egg = SpawnEggItem.forEntity(type);
+        SpawnEggItem egg = SpawnEggItem.byId(type);
 
         if (egg != null)
             return new ItemStack(egg);
@@ -84,8 +84,7 @@ public record EntityTypeIcon(EntityType<?> entity, ItemStack icon) {
         return DEFAULT_ICON;
     }
 
-    @SuppressWarnings("deprecation")
-    public static List<EntityType<?>> getEntityOfType(SpawnGroup cat) {
-        return Registries.ENTITY_TYPE.stream().filter(type -> type.getSpawnGroup() == cat).toList();
+    public static List<EntityType<?>> getEntityOfType(MobCategory cat) {
+        return BuiltInRegistries.ENTITY_TYPE.stream().filter(type -> type.getCategory() == cat).toList();
     }
 }

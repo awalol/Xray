@@ -1,23 +1,27 @@
 package fr.atesab.xray.widget;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import fr.atesab.xray.utils.GuiUtils;
 import fr.atesab.xray.widget.MenuWidget.OnPress;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.PressableWidget;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
-public class LongItemWidget extends PressableWidget {
+public class LongItemWidget extends AbstractButton {
 
-    private final ItemStack itemStack;
-    private final OnPress oPress;
+    private ItemStack itemStack;
+    private OnPress oPress;
     private int deltaX;
     private int deltaY;
 
-    public LongItemWidget(int x, int y, int w, int h, Text text, ItemStack stack, OnPress oPress) {
+    public LongItemWidget(int x, int y, int w, int h, Component text, ItemStack stack, OnPress oPress) {
         super(x, y, w, h, text);
         this.itemStack = stack;
         this.oPress = oPress;
@@ -31,15 +35,11 @@ public class LongItemWidget extends PressableWidget {
         this.deltaY = deltaY;
     }
 
-    @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        this.appendDefaultNarrations(builder);
-    }
 
     @Override
-    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        boolean hovered = isHovered();
+    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        Minecraft client = Minecraft.getInstance();
+        boolean hovered = isHoveredOrFocused();
         int color;
         if (hovered) {
             color = 0x33ffffff;
@@ -47,18 +47,23 @@ public class LongItemWidget extends PressableWidget {
             color = 0x22ffffff;
         }
 
-        context.fill(getX(), getY(), getX() + width, getY() + height, color);
+        int x = getX();
+        int y = getY();
+        graphics.fill(x, y, x + width, y + height, color);
 
-        Text message = getMessage();
-        TextRenderer textRenderer = client.textRenderer;
+        Component message = getMessage();
+        Font font = client.font;
+        ItemRenderer renderer = client.getItemRenderer();
 
         int deltaH = (getHeight() - 16);
 
-        GuiUtils.renderItemIdentity(context, itemStack, getX() + deltaH / 2 + deltaX, getY() + deltaH / 2 + deltaY);
-        int textColor = this.active ? 16777215 : 10526880;
-        context.drawText(textRenderer,
-                message, getX() + deltaH + 16 + 2, getY() + (getHeight() - textRenderer.fontHeight) / 2,
-                textColor, false);
+        GuiUtils.renderItemIdentity(graphics, itemStack, x + deltaH / 2 + deltaX, y + deltaH / 2 + deltaY);
+        graphics.drawString(font, message, x + deltaH + 16 + 2, y + getHeight() / 2 - font.lineHeight / 2, packedFGColor);
+    }
+
+    @Override
+    protected void updateWidgetNarration(NarrationElementOutput p_259858_) {
+        this.defaultButtonNarrationText(p_259858_);
     }
 
     @Override

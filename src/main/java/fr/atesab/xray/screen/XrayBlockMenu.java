@@ -3,42 +3,39 @@ package fr.atesab.xray.screen;
 import fr.atesab.xray.config.BlockConfig;
 import fr.atesab.xray.utils.GuiUtils;
 import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.block.Block;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class XrayBlockMenu extends Screen {
-    private static final Text ADD = Text.literal("+").formatted(Formatting.GREEN);
-    private static final Text REPLACE = Text.translatable("x13.mod.menu.replace")
-            .formatted(Formatting.YELLOW);
-    private static final Text DELETE = Text.translatable("x13.mod.menu.delete")
-            .formatted(Formatting.RED);
-    private final Screen parent;
+public class XrayBlockMenu extends XrayScreen {
+    private static final Component ADD = Component.literal("+").withStyle(ChatFormatting.GREEN);
+    private static final Component REPLACE = Component.translatable("x13.mod.menu.replace")
+            .withStyle(ChatFormatting.YELLOW);
+    private static final Component DELETE = Component.translatable("x13.mod.menu.delete")
+            .withStyle(ChatFormatting.RED);
     private final BlockConfig mode;
     private final List<Block> config;
     private final List<Block> visible = new ArrayList<>();
-    private TextFieldWidget searchBar;
-    private ButtonWidget nextPage;
-    private ButtonWidget lastPage;
+    private EditBox searchBar;
+    private XrayButton nextPage;
+    private XrayButton lastPage;
     private int elementByPage = 1;
     private int elementsX = 1;
     private int elementsY = 1;
     private int page = 0;
 
     public XrayBlockMenu(Screen parent, BlockConfig mode) {
-        super(Text.literal(mode.getName()));
+        super(Component.translatable(mode.getName()), parent);
         this.mode = mode;
-        this.parent = parent;
         this.config = new ArrayList<>();
         this.config.addAll(mode.getBlocks().getObjects());
     }
@@ -55,21 +52,20 @@ public class XrayBlockMenu extends Screen {
         int pageTop = height / 2 - sizeY / 2 - 24;
         int pageBottom = height / 2 + sizeY / 2 + 2;
 
-        searchBar = new TextFieldWidget(textRenderer, width / 2 - sizeX / 2, pageTop + 2, sizeX, 16,
-                Text.literal("")) {
+        searchBar = new EditBox(font, width / 2 - sizeX / 2, pageTop + 2, sizeX, 16, Component.literal("")) {
             @Override
             public boolean mouseClicked(double mouseX, double mouseY, int button) {
                 if (button == 1 && mouseX >= this.getX() && mouseX <= this.getX() + this.width && mouseY >= this.getY()
                         && mouseY <= this.getY() + this.height) {
-                    setText("");
+                    setValue("");
                     return true;
                 }
                 return super.mouseClicked(mouseX, mouseY, button);
             }
 
             @Override
-            public void setText(String text) {
-                super.setText(text);
+            public void setValue(String text) {
+                super.setValue(text);
                 updateSearch();
             }
 
@@ -92,28 +88,31 @@ public class XrayBlockMenu extends Screen {
             }
         };
 
-        lastPage = XrayButton.builder(Text.literal("<-"), b -> {
+        lastPage = new XrayButton(width / 2 - 126, pageBottom, 20, 20, Component.literal("<-"), b -> {
             page--;
             updateArrows();
-        }).dimensions(width / 2 - 126, pageBottom, 20, 20).build();
+        });
 
-        ButtonWidget doneBtn = XrayButton.builder(Text.translatable("gui.done"), b -> {
+        XrayButton doneBtn = new XrayButton(width / 2 - 102, pageBottom, 100, 20,
+                Component.translatable("gui.done"), b -> {
             mode.getBlocks().setObjects(config);
-            client.setScreen(parent);
-        }).dimensions(width / 2 - 102, pageBottom, 100, 20).build();
+            getMinecraft().setScreen(parent);
+        });
 
-        ButtonWidget cancelBtn = XrayButton.builder(
-                Text.translatable("gui.cancel"), b -> client.setScreen(parent)).dimensions(width / 2 + 2, pageBottom, 100, 20).build();
-        nextPage = XrayButton.builder(Text.literal("->"), b -> {
+        XrayButton cancelBtn = new XrayButton(width / 2 + 2, pageBottom, 100, 20,
+                Component.translatable("gui.cancel"), b -> {
+            getMinecraft().setScreen(parent);
+        });
+        nextPage = new XrayButton(width / 2 + 106, pageBottom, 20, 20, Component.literal("->"), b -> {
             page++;
             updateArrows();
-        }).dimensions(width / 2 + 106, pageBottom, 20, 20).build();
+        });
 
-        addSelectableChild(searchBar);
-        addDrawableChild(lastPage);
-        addDrawableChild(doneBtn);
-        addDrawableChild(cancelBtn);
-        addDrawableChild(nextPage);
+        addWidget(searchBar);
+        addRenderableWidget(lastPage);
+        addRenderableWidget(doneBtn);
+        addRenderableWidget(cancelBtn);
+        addRenderableWidget(nextPage);
 
         updateArrows();
         updateSearch();
@@ -127,9 +126,9 @@ public class XrayBlockMenu extends Screen {
     }
 
     public void updateSearch() {
-        String query = searchBar.getText().toLowerCase();
+        String query = searchBar.getValue().toString().toLowerCase();
         visible.clear();
-        config.stream().filter(block -> I18n.translate(block.getTranslationKey()).toLowerCase().contains(query))
+        config.stream().filter(block -> I18n.get(block.getDescriptionId()).toLowerCase().contains(query))
                 .forEach(visible::add);
         page = Math.min(visible.size(), page);
         updateArrows();
@@ -140,9 +139,9 @@ public class XrayBlockMenu extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float partialTick) {
-        renderInGameBackground(context);
-        searchBar.render(context, mouseX, mouseY, partialTick);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics,mouseX,mouseY,partialTick);
+        searchBar.render(graphics, mouseX, mouseY, partialTick);
 
         int left = width / 2 - elementsX * 18 / 2;
         int top = height / 2 - elementsY * 18 / 2;
@@ -167,8 +166,8 @@ public class XrayBlockMenu extends Screen {
                 color = 0x44666699;
             }
 
-            context.fill(x, y, x + 18, y + 18, color);
-            GuiUtils.renderItemIdentity(context, stack, x + 1, y + 1);
+            graphics.fill(x, y, x + 18, y + 18, color);
+            GuiUtils.renderItemIdentity(graphics, stack, x + 1, y + 1);
         }
         // add [+] button
         int x = left + (i % elementsX) * 18;
@@ -182,16 +181,15 @@ public class XrayBlockMenu extends Screen {
             color = 0x44669966;
         }
 
-        context.fill(x, y, x + 18, y + 18, color);
-        context.drawText(textRenderer, ADD, x + 18 / 2 - textRenderer.getWidth(ADD) / 2,
-                y + 18 / 2 - textRenderer.fontHeight / 2, color, false);
+        graphics.fill(x, y, x + 18, y + 18, color);
+        graphics.drawString(font, ADD, x + (18 - font.width(ADD)) / 2, y + (18 - font.lineHeight) / 2, color);
 
-        super.render(context, mouseX, mouseY, partialTick);
+        super.render(graphics, mouseX, mouseY, partialTick);
 
         if (hovered != null) {
-            context.drawTooltip(textRenderer,
-                    Arrays.asList(Text.translatable(hoveredBlock.getTranslationKey()),
-                            REPLACE, DELETE),
+            graphics.renderTooltip(font,
+                    Arrays.asList(Component.translatable(hoveredBlock.getDescriptionId()).getVisualOrderText(),
+                            REPLACE.getVisualOrderText(), DELETE.getVisualOrderText()),
                     mouseX, mouseY);
         }
     }
@@ -212,7 +210,7 @@ public class XrayBlockMenu extends Screen {
             int y = top + (i / elementsX) * 18;
             if (mouseX >= x && mouseX <= x + 18 && mouseY >= y && mouseY <= y + 18) {
                 if (button == 0) { // left click: replace
-                    client.setScreen(new BlockSelector(this) {
+                    getMinecraft().setScreen(new BlockSelector(this) {
                         @Override
                         protected void save(Block selection) {
                             int index = config.indexOf(b);
@@ -237,7 +235,7 @@ public class XrayBlockMenu extends Screen {
         int y = top + (i / elementsX) * 18;
         if (button == 0 && mouseX >= x && mouseX <= x + 18 && mouseY >= y && mouseY <= y + 18) {
             // add
-            client.setScreen(new BlockSelector(this) {
+            getMinecraft().setScreen(new BlockSelector(this) {
                 @Override
                 protected void save(Block selection) {
                     config.add(selection);
@@ -247,10 +245,5 @@ public class XrayBlockMenu extends Screen {
             return true;
         }
         return false;
-    }
-
-    @Override
-    public void applyBlur(){
-
     }
 }

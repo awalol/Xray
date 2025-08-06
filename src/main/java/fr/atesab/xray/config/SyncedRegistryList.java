@@ -1,14 +1,15 @@
 package fr.atesab.xray.config;
 
+import fr.atesab.xray.utils.TagOnWriteList;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import org.intellij.lang.annotations.Identifier;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-
-import fr.atesab.xray.utils.TagOnWriteList;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
 
 public class SyncedRegistryList<R> extends TagOnWriteList<String> implements Cloneable {
 
@@ -50,14 +51,14 @@ public class SyncedRegistryList<R> extends TagOnWriteList<String> implements Clo
         setTagEnabled(false);
         this.objects = new ArrayList<>(objects);
         clear();
-        objects.stream().filter(Objects::nonNull).map(registry::getId).map(Object::toString).forEach(this::add);
+        objects.stream().filter(Objects::nonNull).map(registry::getKey).map(Object::toString).forEach(this::add);
         setTagEnabled(true);
         synced = true;
     }
 
     public SyncedRegistryList<R> sync() {
         objects.clear();
-        stream().map(Identifier::of).map(registry::get).filter(Objects::nonNull).forEach(objects::add);
+        stream().map(ResourceLocation::parse).map(registry::get).filter(Objects::nonNull).forEach(objects::add);
         removeUpdated();
         synced = true;
         return this;

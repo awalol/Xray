@@ -1,8 +1,7 @@
 package fr.atesab.xray.utils;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 public class XrayUtils {
     @FunctionalInterface
@@ -32,8 +31,8 @@ public class XrayUtils {
         }
     }
 
-    public static Text getToggleable(boolean value, String title) {
-        return Text.translatable(title).append(" (")
-                .append(Text.translatable(value ? "x13.mod.on" : "x13.mod.off").styled(s -> s.withColor(value ? Formatting.GREEN : Formatting.RED))).append(")");
+    public static Component getToggleable(boolean value, String title) {
+        return Component.translatable(title).append(" (")
+                .append(Component.translatable(value ? "x13.mod.on" : "x13.mod.off").withStyle(value ? ChatFormatting.GREEN : ChatFormatting.RED)).append(")");
     }
 }

@@ -1,8 +1,8 @@
 package fr.atesab.xray.config;
 
 import com.google.gson.annotations.Expose;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 public class LocationConfig implements Cloneable {
     public enum TextAlignX {
@@ -50,8 +50,8 @@ public class LocationConfig implements Cloneable {
             return alignY;
         }
 
-        public MutableText getTranslationText() {
-            return Text.translatable(getTranslation());
+        public MutableComponent getTranslationText() {
+            return Component.translatable(getTranslation());
         }
 
         public float getDefaultShiftX() {

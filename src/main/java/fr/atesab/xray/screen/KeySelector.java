@@ -1,27 +1,28 @@
 package fr.atesab.xray.screen;
 
-import fr.atesab.xray.utils.KeyData;
-import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import org.lwjgl.glfw.GLFW;
-
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+
+import fr.atesab.xray.utils.KeyData;
+import fr.atesab.xray.widget.XrayButton;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import org.lwjgl.glfw.GLFW;
 
 public class KeySelector extends XrayScreen {
-    private static final Text NONE_KEY = Text.translatable("x13.mod.selector.key.none");
+    private static final MutableComponent NONE_KEY = Component.translatable("x13.mod.selector.key.none");
 
     private final Consumer<Optional<KeyData>> keyConsumer;
     private Optional<KeyData> value;
     private boolean isWaitingKey = false;
 
-    private ButtonWidget cancelButton;
-    private ButtonWidget keyButton;
-    private ButtonWidget doneButton;
+    private XrayButton cancelButton;
+    private XrayButton keyButton;
+    private XrayButton doneButton;
 
     public KeySelector(Screen parent, KeyData key, Consumer<Optional<KeyData>> keyConsumer) {
         this(parent, Optional.of(key), keyConsumer);
@@ -32,7 +33,7 @@ public class KeySelector extends XrayScreen {
     }
 
     public KeySelector(Screen parent, Optional<KeyData> currentValue, Consumer<Optional<KeyData>> keyConsumer) {
-        super(Text.translatable("x13.mod.selector.key.title"), parent);
+        super(Component.translatable("x13.mod.selector.key.title"), parent);
         value = currentValue;
         this.keyConsumer = keyConsumer;
     }
@@ -57,12 +58,17 @@ public class KeySelector extends XrayScreen {
 
     @Override
     protected void init() {
-        keyButton = addDrawableChild(XrayButton.builder(NONE_KEY, b -> waitKey()).dimensions(width / 2 - 100, height / 2 - 24, 200, 20).build());
-        doneButton = addDrawableChild(XrayButton.builder(Text.translatable("gui.done"), b -> {
-            keyConsumer.accept(value);
-            client.setScreen(parent);
-        }).dimensions(width / 2 - 100, height / 2, 200, 20).build());
-        cancelButton = addDrawableChild(XrayButton.builder(Text.translatable("gui.cancel"), b -> client.setScreen(parent)).dimensions(width / 2 - 100, height / 2 + 24, 200, 20).build());
+        keyButton = addRenderableWidget(new XrayButton(width / 2 - 100, height / 2 - 24, 200, 20,
+                NONE_KEY, b -> waitKey()));
+        doneButton = addRenderableWidget(new XrayButton(width / 2 - 100, height / 2, 200, 20,
+                Component.translatable("gui.done"), b -> {
+                    keyConsumer.accept(value);
+                    minecraft.setScreen(parent);
+                }));
+        cancelButton = addRenderableWidget(new XrayButton(width / 2 - 100, height / 2 + 24, 200, 20,
+                Component.translatable("gui.cancel"), b -> {
+                    minecraft.setScreen(parent);
+                }));
         setKey(value);
         super.init();
     }
@@ -88,7 +94,7 @@ public class KeySelector extends XrayScreen {
             }
         }
 
-        return super.keyReleased(key, scanCode, modifier);
+        return super.keyPressed(key, scanCode, modifier);
     }
 
     @Override
@@ -97,17 +103,16 @@ public class KeySelector extends XrayScreen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderInGameBackground(context);
-        context.drawCenteredTextWithShadow(textRenderer, getTitle(), width / 2, height / 2 - 30 - textRenderer.fontHeight,
-                0xffffffff);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        renderBackground(graphics,mouseX,mouseY,delta);
+        graphics.drawCenteredString(font, getTitle(), width / 2, height / 2 - 30 - font.lineHeight, 0xffffffff);
 
         if (isWaitingKey) {
-            context.drawCenteredTextWithShadow(textRenderer, Text.translatable("x13.mod.selector.key.presskey"), width / 2,
-                    keyButton.getY() + keyButton.getHeight() / 2 - textRenderer.fontHeight, 0xffffff00);
+            graphics.drawCenteredString(font, Component.translatable("x13.mod.selector.key.presskey"), width / 2,
+                    keyButton.getY() + keyButton.getHeight() / 2 - font.lineHeight, 0xffffff00);
         }
 
-        super.render(context, mouseX, mouseY, delta);
+        super.render(graphics, mouseX, mouseY, delta);
     }
 
 }

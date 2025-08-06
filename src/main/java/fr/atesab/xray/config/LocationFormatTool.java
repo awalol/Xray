@@ -1,25 +1,5 @@
 package fr.atesab.xray.config;
 
-import fr.atesab.xray.XrayMain;
-import fr.atesab.xray.color.EnumElement;
-import fr.atesab.xray.utils.GuiUtils;
-import fr.atesab.xray.utils.LocationUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Util;
-import net.minecraft.world.LightType;
-import net.minecraft.world.World;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,7 +10,29 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import fr.atesab.xray.XrayMain;
+import fr.atesab.xray.color.EnumElement;
+import fr.atesab.xray.utils.GuiUtils;
+import fr.atesab.xray.utils.LocationUtils;
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.LightLayer;
 
 public class LocationFormatTool implements EnumElement {
     private static final String ID_PATTERN = "([A-Za-z0-9_]+)";
@@ -54,41 +56,41 @@ public class LocationFormatTool implements EnumElement {
 
     public static final ToolFunction EMPTY_FUNCTION = (mc, player, world) -> "";
     public static final LocationFormatTool PLAYER_LOCATION_X = register("x13.mod.location.opt.x", Items.BOOK, "x",
-            (mc, player, world) -> XrayMain.significantNumbers(player.getPos().x));
+            (mc, player, world) -> XrayMain.significantNumbers(player.position().x));
     public static final LocationFormatTool PLAYER_LOCATION_Y = register("x13.mod.location.opt.y", Items.BOOK, "y",
-            (mc, player, world) -> XrayMain.significantNumbers(player.getPos().y));
+            (mc, player, world) -> XrayMain.significantNumbers(player.position().y));
     public static final LocationFormatTool PLAYER_LOCATION_Z = register("x13.mod.location.opt.z", Items.BOOK, "z",
-            (mc, player, world) -> XrayMain.significantNumbers(player.getPos().z));
+            (mc, player, world) -> XrayMain.significantNumbers(player.position().z));
     public static final LocationFormatTool PLAYER_LOCATION_FLOOR_X = register("x13.mod.location.opt.fx", Items.BOOK, "fx",
-            (mc, player, world) -> String.valueOf((int) player.getPos().x));
+            (mc, player, world) -> String.valueOf((int) player.position().x));
     public static final LocationFormatTool PLAYER_LOCATION_FLOOR_Y = register("x13.mod.location.opt.fy", Items.BOOK, "fy",
-            (mc, player, world) -> String.valueOf((int) player.getPos().y));
+            (mc, player, world) -> String.valueOf((int) player.position().y));
     public static final LocationFormatTool PLAYER_LOCATION_FLOOR_Z = register("x13.mod.location.opt.fz", Items.BOOK, "fz",
-            (mc, player, world) -> String.valueOf((int) player.getPos().z));
+            (mc, player, world) -> String.valueOf((int) player.position().z));
     public static final LocationFormatTool PLAYER_NAME = register("x13.mod.location.opt.name", Items.NAME_TAG, "name", (mc, player, world) -> player.getGameProfile().getName());
-    public static final LocationFormatTool FPS = register("x13.mod.location.opt.fps", Items.ITEM_FRAME, "fps", (mc, player, world) -> ""+mc.getCurrentFps());
-    public static final LocationFormatTool FPS_DEBUG = register("x13.mod.location.opt.fps.debug", Items.ITEM_FRAME, "dfps", (mc, player, world) -> mc.fpsDebugString);
+    public static final LocationFormatTool FPS = register("x13.mod.location.opt.fps", Items.ITEM_FRAME, "fps", (mc, player, world) -> ""+mc.getFps());
+    public static final LocationFormatTool FPS_DEBUG = register("x13.mod.location.opt.fps.debug", Items.ITEM_FRAME, "dfps", (mc, player, world) -> mc.fpsString);
     public static final LocationFormatTool BIOME = register("x13.mod.location.opt.biome", Items.OAK_LOG, "bio",
-    		(mc, player, world) -> world.getBiome(player.getBlockPos()).getKey().map(registry -> registry.getValue().getPath()).orElse("???"));
+    		(mc, player, world) -> world.getBiome(player.blockPosition()).unwrapKey().get().location().getPath());
     public static final LocationFormatTool BIOME_TRANSLATE = register("x13.mod.location.opt.biomeTranslate", Items.STRIPPED_OAK_LOG, "biotranslate",
-            (mc, player, world) -> world.getBiome(player.getBlockPos()).getKey().map(registry -> I18n.translate(Util.createTranslationKey("biome",registry.getValue()))).orElse("???"));
+    		(mc, player, world) -> Component.translatable(Util.makeDescriptionId("biome", world.getBiome(player.blockPosition()).unwrapKey().get().location())).getString());
     public static final LocationFormatTool PLAYER_CHUNK_X = register("x13.mod.location.opt.chunkX", Items.BOOK, "cx",
-    		(mc, player, world) -> String.valueOf(player.getChunkPos().x));
+            (mc, player, world) -> String.valueOf(player.chunkPosition().x));
     public static final LocationFormatTool PLAYER_CHUNK_Z = register("x13.mod.location.opt.chunkZ", Items.BOOK, "cz",
-    		(mc, player, world) -> String.valueOf(player.getChunkPos().z));
+    		(mc, player, world) -> String.valueOf(player.chunkPosition().z));
     public static final LocationFormatTool BLOCK_LIGHT = register("x13.mod.location.opt.blockLight", Items.TORCH, "blocklight",
-    		(mc, player, world) -> String.valueOf(world.getLightLevel(LightType.BLOCK,player.getBlockPos()))); //Fixme 1.19.4
+    		(mc, player, world) -> String.valueOf(world.getBrightness(LightLayer.BLOCK,player.blockPosition())));
     public static final LocationFormatTool SKY_LIGHT = register("x13.mod.location.opt.skyLight", Items.ELYTRA, "skylight",
-    		(mc, player, world) -> String.valueOf(world.getLightLevel(LightType.SKY,player.getBlockPos()))); //Fixme 1.19.4
+    		(mc, player, world) -> String.valueOf(world.getBrightness(LightLayer.SKY,player.blockPosition())));
     public static final LocationFormatTool LOOKING_BLOCK_LIGHT = register("x13.mod.location.opt.lookingBlockLight", Items.REDSTONE_TORCH, "lookinglight",
-    		(mc, player, world) -> String.valueOf(world.getLightLevel(LightType.BLOCK,LocationUtils.getLookingFaceBlockPos(mc, player))));
+    		(mc, player, world) -> String.valueOf(world.getBrightness(LightLayer.BLOCK, LocationUtils.getLookingFaceBlockPos(mc, player))));
     public static final LocationFormatTool LOOKINGBLOCK = register("x13.mod.location.opt.lookingBlock", Items.DIAMOND_ORE, "lookingblock",
-    		(mc, player, world) -> Registries.BLOCK.getKey(world.getBlockState(LocationUtils.getLookingBlockPos(mc)).getBlock()).map(b -> b.getValue().getPath()).orElse("???"));
+    		(mc, player, world) -> BuiltInRegistries.BLOCK.getKey(world.getBlockState(LocationUtils.getLookingBlockPos(mc)).getBlock()).getPath());
     public static final LocationFormatTool LOOKINGBLOCK_TRANSLATE = register("x13.mod.location.opt.lookingTranslate", Items.DIAMOND_ORE, "lookingtranslate",
-    		(mc, player, world) -> I18n.translate(world.getBlockState(LocationUtils.getLookingBlockPos(mc))
-                    .getBlock().getTranslationKey()));
+    		(mc, player, world) -> I18n.get(world.getBlockState(LocationUtils.getLookingBlockPos(mc))
+                    .getBlock().getDescriptionId()));
     public static final LocationFormatTool FACING = register("x13.mod.location.opt.facing", Items.COMPASS, "face",
-    		(mc, player, world) -> player.getHorizontalFacing().getName());
+    		(mc, player, world) -> player.getDirection().getName());
     public static final LocationFormatTool DAYS_COUNT = register("x13.mod.location.opt.daysCount", Items.CLOCK, "d",
     		(mc, player, world) -> String.valueOf(currentDays));
     public static final LocationFormatTool TIME_OF_DAY = register("x13.mod.location.opt.timeOfDay", Items.CLOCK, "timeday",
@@ -102,9 +104,15 @@ public class LocationFormatTool implements EnumElement {
     public static final LocationFormatTool TIME_SECONDS_PADDING = register("x13.mod.location.opt.secondsPadding", Items.CLOCK, "ss",
     		(mc, player, world) -> LocationUtils.getTwoDigitNumberFormat().format(currentSeconds));
     public static final LocationFormatTool IS_SLIME = register("x13.mod.location.opt.isSlime", Items.SLIME_BALL, "slime",
-    		(mc, player, world) -> LocationUtils.isSlimeChunk(mc, player.getChunkPos()));
+    		(mc, player, world) -> String.valueOf(LocationUtils.isSlimeChunk(mc, player.chunkPosition())));
     public static final LocationFormatTool NEW_LINE = register("x13.mod.location.opt.lineFeed",Items.WRITABLE_BOOK, "lf",
-    		(mc, player, world) -> "\n");
+            (mc, player, world) -> "\n");
+    public static final LocationFormatTool ALL = register("debug",Items.WRITABLE_BOOK, "debug",
+            (mc, player, world) -> "DEBUG\n" + TOOLS.entrySet().stream()
+                    .filter(e -> !e.getKey().equals("debug"))
+                    .map(e -> e.getKey() + ": " + e.getValue().getAction().apply(mc, player, world))
+                    .collect(Collectors.joining("\n"))
+    );
 
     public static Collection<LocationFormatTool> values() {
         return Collections.unmodifiableCollection(TOOLS.values());
@@ -166,7 +174,7 @@ public class LocationFormatTool implements EnumElement {
 
         return tool.clearValue();
     }
-    public static LocationFormatTool register(String translation, ItemConvertible icon, String txt, ToolFunction action) {
+    public static LocationFormatTool register(String translation, ItemLike icon, String txt, ToolFunction action) {
         LocationFormatTool tool = new LocationFormatTool(translation, icon, txt, action);
         TOOLS.put(tool.getID(), tool);
         return tool;
@@ -175,16 +183,16 @@ public class LocationFormatTool implements EnumElement {
     private final String regex;
     private final ToolFunction action;
     private final ItemStack icon;
-    private final Text title;
+    private final Component title;
 
-    private LocationFormatTool(String translation, ItemConvertible icon, String txt, ToolFunction action) {
+    private LocationFormatTool(String translation, ItemLike icon, String txt, ToolFunction action) {
         if (ID_PATTERN.matches(txt)) {
             throw new IllegalArgumentException("id should match the format " + ID_PATTERN);
         }
         this.regex = txt;
         this.action = action;
         this.icon = new ItemStack(icon);
-        this.title = Text.translatable(translation);
+        this.title = Component.translatable(translation);
     }
 
     public String getOption() {
@@ -199,9 +207,9 @@ public class LocationFormatTool implements EnumElement {
         return action;
     }
 
-    public String apply(String old, MinecraftClient mc) {
-        ClientPlayerEntity player = mc.player;
-        ClientWorld world = mc.world;
+    public String apply(String old, Minecraft mc) {
+        LocalPlayer player = mc.player;
+        ClientLevel world = mc.level;
         if (player == null || world == null) {
             return "";
         }
@@ -214,13 +222,13 @@ public class LocationFormatTool implements EnumElement {
     }
 
     @Override
-    public Text getTitle() {
+    public Component getTitle() {
         return title;
     }
 
 
     public interface ToolFunction {
-        String apply(MinecraftClient client, ClientPlayerEntity player, World world);
+        String apply(Minecraft client, LocalPlayer player, ClientLevel world);
     }
 
     public static class StringToolFunction implements ToolFunction {
@@ -231,14 +239,14 @@ public class LocationFormatTool implements EnumElement {
         }
 
         @Override
-        public String apply(MinecraftClient client, ClientPlayerEntity player, World world) {
+        public String apply(Minecraft client, LocalPlayer player, ClientLevel world) {
             return text;
         }
     }
 
     private static Function<Style, Style> toColorApplier(Function<Style, Style> prev, String colorBlock) {
         if (colorBlock.length() == 0) {
-            return s -> s.withColor(Formatting.RESET);
+            return s -> s.withColor(ChatFormatting.RESET);
         }
 
         char start = colorBlock.charAt(0);
@@ -299,8 +307,8 @@ public class LocationFormatTool implements EnumElement {
             }
             // base color &6
             default -> {
-                Formatting chatFormatting = Objects.requireNonNullElse(Formatting.byCode(start), Formatting.RESET);
-                if (chatFormatting == Formatting.RESET) {
+                ChatFormatting chatFormatting = Objects.requireNonNullElse(ChatFormatting.getByCode(start), ChatFormatting.RESET);
+                if (chatFormatting == ChatFormatting.RESET) {
                     yield s -> s;
                 }
                 if (chatFormatting.isColor()) {
@@ -317,7 +325,7 @@ public class LocationFormatTool implements EnumElement {
                         yield s -> prev.apply(s).withStrikethrough(true);
                     }
                     case UNDERLINE -> {
-                        yield s -> prev.apply(s).withUnderline(true);
+                        yield s -> prev.apply(s).withUnderlined(true);
                     }
                     case ITALIC -> {
                         yield s -> prev.apply(s).withItalic(true);
@@ -335,13 +343,13 @@ public class LocationFormatTool implements EnumElement {
      * @param text text
      * @return components
      */
-    public static Text[] applyColor(String text) {
+    public static Component[] applyColor(String text) {
         return Stream.of(text.split("\n")).map(l -> {
             Matcher matcher = COLOR_PATTERN.matcher(l);
             Function<Style, Style> style = (s) -> s;
 
             int last = 0;
-            MutableText current = Text.literal("");
+            MutableComponent current = Component.literal("");
 
             while (matcher.find()) {
                 int start = matcher.start();
@@ -349,7 +357,7 @@ public class LocationFormatTool implements EnumElement {
 
                 // append previous literal if required
                 if (start != last) {
-                    current = current.append(Text.literal(l.substring(last, start)).styled(style::apply));
+                    current = current.append(Component.literal(l.substring(last, start)).withStyle(style::apply));
                 }
                 // set the new end
                 last = end;
@@ -359,16 +367,16 @@ public class LocationFormatTool implements EnumElement {
                 try {
                     style = toColorApplier(style, colorInfoBlock);
                 } catch (Exception e) {
-                    return Text.literal("error &" + colorInfoBlock + ": " + e.getMessage());
+                    return Component.literal("error &" + colorInfoBlock + ": " + e.getMessage());
                 }
             }
             // append previous literal if required
             if (last != l.length()) {
-                current = current.append(Text.literal(l.substring(last)).styled(style::apply));
+                current = current.append(Component.literal(l.substring(last)).withStyle(style::apply));
             }
 
             return current;
-        }).toArray(Text[]::new);
+        }).toArray(Component[]::new);
     }
 
     public static class ListToolFunction implements ToolFunction {
@@ -383,7 +391,7 @@ public class LocationFormatTool implements EnumElement {
         }
 
         @Override
-        public String apply(MinecraftClient client, ClientPlayerEntity player, World world) {
+        public String apply(Minecraft client, LocalPlayer player, ClientLevel world) {
             StringBuilder bld = new StringBuilder();
         	updateTimeField(client, player, world);
 
@@ -409,14 +417,14 @@ public class LocationFormatTool implements EnumElement {
         }
     }
 
-    private static void updateTimeField(MinecraftClient client, ClientPlayerEntity player, World world) {
-    	if (currentDayTime == world.getTimeOfDay())
+    private static void updateTimeField(Minecraft client, LocalPlayer player, ClientLevel world) {
+    	if (currentDayTime == world.getDayTime())
     		return;
-    	currentDayTime = world.getTimeOfDay();
+    	currentDayTime = world.getDayTime();
     	long fixedDayTime = currentDayTime + 6000;
     	currentDays = Math.floorDiv(fixedDayTime, 24000);
     	long fixedTime = Math.floorMod(fixedDayTime, 24000);
-    	currentTimeOfDay = (float) (fixedDayTime / 24000);
+    	currentTimeOfDay = fixedDayTime / 24000;
     	currentHours = Math.floorDiv(fixedTime, 1000);
     	long fixedMinutes = Math.floorMod(fixedTime, 1000); //0-999
     	currentMinutes = Math.floorDiv(fixedMinutes * 60, 1000);

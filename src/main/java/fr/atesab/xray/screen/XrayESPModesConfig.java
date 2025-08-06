@@ -1,5 +1,7 @@
 package fr.atesab.xray.screen;
 
+import java.util.Optional;
+import java.util.stream.Stream;
 import fr.atesab.xray.config.ESPConfig;
 import fr.atesab.xray.screen.page.AddPagedButton;
 import fr.atesab.xray.screen.page.AddPagedElement;
@@ -10,14 +12,9 @@ import fr.atesab.xray.utils.KeyData;
 import fr.atesab.xray.utils.XrayUtils;
 import fr.atesab.xray.widget.EntityConfigWidget;
 import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-
-import java.util.Optional;
-import java.util.stream.Stream;
-
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public abstract class XrayESPModesConfig extends PagedScreen<ESPConfig> {
     private class PagedESPMode extends PagedElement<ESPConfig> {
@@ -39,33 +36,37 @@ public abstract class XrayESPModesConfig extends PagedScreen<ESPConfig> {
             int x = width / 2 - 125;
             entities = addSubWidget(new EntityConfigWidget(x, 0, 115, 20, cfg, XrayESPModesConfig.this));
             x += 119;
-            addSubWidget(XrayButton.builder(KeyData.getName(cfg.getKey()), btn -> client.setScreen(new KeySelector(XrayESPModesConfig.this, cfg.getKey(), oKey -> {
-                cfg.setKey(oKey);
-                btn.setMessage(KeyData.getName(cfg.getKey()));
-            }))).dimensions(x, 0, 56, 20).build());
+            addSubWidget(new XrayButton(x, 0, 56, 20, KeyData.getName(cfg.getKey()), btn -> {
+                minecraft.setScreen(new KeySelector(XrayESPModesConfig.this, cfg.getKey(), oKey -> {
+                    cfg.setKey(oKey);
+                    btn.setMessage(KeyData.getName(cfg.getKey()));
+                }));
+            }));
             x += 60;
-            addSubWidget(XrayButton.builder(XrayUtils.getToggleable(cfg.hasTracer(), "x13.mod.esp.tracer"),
-                    btn -> {
+            addSubWidget(
+                    new XrayButton(x, 0, 74, 20, XrayUtils.getToggleable(cfg.hasTracer(), "x13.mod.esp.tracer"), btn -> {
                         cfg.setTracer(!cfg.hasTracer());
                         btn.setMessage(XrayUtils.getToggleable(cfg.hasTracer(), "x13.mod.esp.tracer"));
-                    }).dimensions(x, 0, 74, 20).build());
+                    }));
             x += 78;
-            addSubWidget(XrayButton.builder(Text.translatable("x13.mod.template.little"), btn -> client.setScreen(new EnumSelector<>(
-                    Text.translatable("x13.mod.template"), XrayESPModesConfig.this,
-                    ESPConfig.Template.values()) {
+            addSubWidget(new XrayButton(x, 0, 20, 20, Component.translatable("x13.mod.template.little"), btn -> {
+                minecraft.setScreen(new EnumSelector<ESPConfig.Template>(
+                        Component.translatable("x13.mod.template"), XrayESPModesConfig.this,
+                        ESPConfig.Template.values()) {
 
-                @Override
-                protected void select(ESPConfig.Template template) {
-                    String oldName = cfg.getModeName();
-                    int color = cfg.getColor();
-                    Optional<KeyData> key = cfg.getKey();
-                    template.cloneInto(cfg);
-                    cfg.setName(oldName);
-                    cfg.setColor(color);
-                    cfg.setKey(key);
-                }
+                    @Override
+                    protected void select(ESPConfig.Template template) {
+                        String oldName = cfg.getModeName();
+                        int color = cfg.getColor();
+                        Optional<KeyData> key = cfg.getKey();
+                        template.cloneInto(cfg);
+                        cfg.setName(oldName);
+                        cfg.setColor(color);
+                        cfg.setKey(key);
+                    }
 
-            })).dimensions(x, 0, 20, 20).build());
+                });
+            }));
             x += 24;
 
             addSubWidget(new AddPagedButton<>(XrayESPModesConfig.this,
@@ -82,21 +83,21 @@ public abstract class XrayESPModesConfig extends PagedScreen<ESPConfig> {
         }
 
         @Override
-        public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
             textHover = XrayUtils.isHover(mouseX, mouseY, width / 2 - 200, 0, width / 2 - 125 - 4, 20);
-            context.fill(width / 2 - 200, 0, width / 2 - 125 - 4, 20, textHover ? 0x33ffaa00 : 0x33ffffff);
-            int w = textRenderer.getWidth(cfg.getModeName());
-            context.drawText(textRenderer, cfg.getModeName(), width / 2 - (200 - 125 - 4) / 2 - 125 - 4 - w / 2,
-                    10 - textRenderer.fontHeight / 2,
-                    cfg.getColor(), false);
-            super.render(context, mouseX, mouseY, delta);
+            graphics.fill(width / 2 - 200, 0, width / 2 - 125 - 4, 20, textHover ? 0x33ffaa00 : 0x33ffffff);
+            int w = font.width(cfg.getModeName());
+            graphics.drawString(font, cfg.getModeName(), width / 2 - (200 - 125 - 4) / 2 - 125 - 4 - w / 2,
+                    10 - font.lineHeight / 2,
+                    cfg.getColor());
+            super.render(graphics, mouseX, mouseY, delta);
         }
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if (textHover) {
                 playDownSound();
-                client.setScreen(new XrayAbstractModeConfig(XrayESPModesConfig.this, cfg));
+                minecraft.setScreen(new XrayAbstractModeConfig(XrayESPModesConfig.this, cfg));
                 return true;
             }
             return super.mouseClicked(mouseX, mouseY, button);
@@ -109,7 +110,7 @@ public abstract class XrayESPModesConfig extends PagedScreen<ESPConfig> {
     }
 
     public XrayESPModesConfig(Screen parent, Stream<ESPConfig> stream) {
-        super(Text.translatable("x13.mod.esp"), parent, 24, stream);
+        super(Component.translatable("x13.mod.esp"), parent, 24, stream);
     }
 
     @Override

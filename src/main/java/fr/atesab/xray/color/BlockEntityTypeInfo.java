@@ -1,21 +1,20 @@
 package fr.atesab.xray.color;
 
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.entity.EntityType;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 public class BlockEntityTypeInfo extends AbstractEnumElement {
-    private static Text fromType(BlockEntityType<?> type) {
-        Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(type);
+    private static Component fromType(BlockEntityType<?> type) {
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(type);
         if (id == null) {
-            return Text.literal(type.toString());
+            return Component.literal(type.toString());
         }
-        return Text.literal(id.toString());
+        return Component.literal(id.toString());
     }
 
-    private BlockEntityType<?> type;
+    private final BlockEntityType<?> type;
 
     public BlockEntityTypeInfo(BlockEntityType<?> type) {
         super(BlockEntityTypeIcon.getIcon(type), fromType(type));

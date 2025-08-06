@@ -5,31 +5,31 @@ import fr.atesab.xray.color.Skin;
 import fr.atesab.xray.config.XrayConfig;
 import fr.atesab.xray.utils.XrayUtils;
 import fr.atesab.xray.widget.LongItemWidget;
-import fr.atesab.xray.widget.XraySlider;
 import fr.atesab.xray.widget.XrayButton;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Util;
+import fr.atesab.xray.widget.XraySlider;
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 
 import java.net.URL;
 
 public class XrayConfigMenu extends XrayScreen {
 
     public XrayConfigMenu(Screen parent) {
-        super(Text.translatable("x13.mod.config"), parent);
+        super(Component.translatable("x13.mod.config"), parent);
     }
 
     @Override
     protected void init() {
         XrayConfig cfg = XrayMain.getMod().getConfig();
-        addDrawableChild(new XraySlider(width / 2 - 100, height / 2 - 48, 200, 20,
-                Text.translatable("x13.mod.esp.maxdistance"), cfg.getMaxTracerRangeNormalized()) {
+        addRenderableWidget(new XraySlider(width / 2 - 100, height / 2 - 48, 200, 20,
+                Component.translatable("x13.mod.esp.maxdistance"), cfg.getMaxTracerRangeNormalized()) {
             {
                 updateMessage();
             }
@@ -37,12 +37,12 @@ public class XrayConfigMenu extends XrayScreen {
             @Override
             protected void updateMessage() {
                 int range = cfg.getMaxTracerRange();
-                MutableText distance = Text.translatable("x13.mod.esp.maxdistance").append(": ");
+                MutableComponent distance = Component.translatable("x13.mod.esp.maxdistance").append(": ");
                 if (range == 0)
-                    setMessage(distance.append(Text.translatable("x13.mod.esp.maxdistance.infinite").formatted(Formatting.YELLOW)));
+                    setMessage(distance.append(Component.translatable("x13.mod.esp.maxdistance.infinite").withStyle(ChatFormatting.YELLOW)));
                 else
                     setMessage(distance
-                            .append(Text.translatable("x13.mod.esp.maxdistance.block", String.valueOf(range)).formatted(Formatting.YELLOW)));
+                            .append(Component.translatable("x13.mod.esp.maxdistance.block", String.valueOf(range)).withStyle(ChatFormatting.YELLOW)));
             }
 
             @Override
@@ -51,21 +51,24 @@ public class XrayConfigMenu extends XrayScreen {
             }
 
         });
-        addDrawableChild(XrayButton.builder(XrayUtils.getToggleable(!cfg.isDamageIndicatorDisabled(), "x13.mod.config.espDamage"), button -> {
-            cfg.setDamageIndicatorDisabled(!cfg.isDamageIndicatorDisabled());
-            button.setMessage(XrayUtils.getToggleable(!cfg.isDamageIndicatorDisabled(), "x13.mod.config.espDamage"));
-        }).dimensions(width / 2 - 100, height / 2 - 24, 200, 20).build());
-
-        addDrawableChild(new XraySlider(width / 2 - 100, height / 2, 200, 20,
-                Text.translatable("x13.mod.config.espline"), cfg.getEspLineWidthNormalized()) {
+        addRenderableWidget(
+                new XrayButton(width / 2 - 100, height / 2 - 24, 200, 20,
+                        XrayUtils.getToggleable(!cfg.isDamageIndicatorDisabled(), "x13.mod.config.espDamage"), button -> {
+                    cfg.setDamageIndicatorDisabled(!cfg.isDamageIndicatorDisabled());
+                    button.setMessage(XrayUtils.getToggleable(!cfg.isDamageIndicatorDisabled(), "x13.mod.config.espDamage"));
+                })
+        );
+        addRenderableWidget(new XraySlider(width / 2 - 100, height / 2, 200, 20,
+                Component.translatable("x13.mod.config.espline"), cfg.getEspLineWidthNormalized()) {
             {
                 updateMessage();
             }
+
             @Override
             protected void updateMessage() {
                 float range = cfg.getEspLineWidth();
-                setMessage(Text.translatable("x13.mod.config.espline").append(": ")
-                        .append(Text.literal(String.format("%.1f", range)).formatted(Formatting.YELLOW)));
+                setMessage(Component.translatable("x13.mod.config.espline").append(": ")
+                        .append(Component.literal(String.format("%.1f", range)).withStyle(ChatFormatting.YELLOW)));
             }
 
             @Override
@@ -75,50 +78,45 @@ public class XrayConfigMenu extends XrayScreen {
 
         });
 
-        addDrawableChild(XrayButton.builder(Text.translatable("x13.mod.config.skin").append(": ").append(Text.literal(cfg.getSkin().getTitle()).formatted(Formatting.YELLOW)), btn -> {
+        addRenderableWidget(new XrayButton(width / 2 - 100, height / 2 + 24, 200, 20, Component.translatable("x13.mod.config.skin").append(": ").append(Component.literal(cfg.getSkin().getTitle()).withStyle(ChatFormatting.YELLOW)), btn -> {
             Skin[] skins = Skin.values();
             cfg.setSkin(skins[(cfg.getSkin().ordinal() + 1) % skins.length]);
-            btn.setMessage(Text.translatable("x13.mod.config.skin").append(": ").append(Text.literal(cfg.getSkin().getTitle()).formatted(Formatting.YELLOW)));
-        }).dimensions(width / 2 - 100, height / 2 + 24, 200, 20).build());
+            btn.setMessage(Component.translatable("x13.mod.config.skin").append(": ").append(Component.literal(cfg.getSkin().getTitle()).withStyle(ChatFormatting.YELLOW)));
+        }));
 
-        addDrawableChild(
-                XrayButton.builder(Text.translatable("gui.done"),
+        addRenderableWidget(
+                new XrayButton(width / 2 - 100, height / 2 + 52, 200, 20, Component.translatable("gui.done"),
                         btn -> {
-                            client.setScreen(parent);
-                        }).dimensions(width / 2 - 100, height / 2 + 52, 200, 20).build());
+                            minecraft.setScreen(parent);
+                        }));
 
-        addDrawableChild(XrayButton.builder(Text.translatable("gui.done"), btn -> client.setScreen(parent)).dimensions(width / 2 - 100, height / 2 + 52, 200, 20).build());
-
-        addDrawableChild(new LongItemWidget(width * 0 / 3, height - 20, width / 3, 20,
-                Text.translatable("x13.mod.link.mod"), new ItemStack(Blocks.GOLD_ORE), () -> {
+        addRenderableWidget(new LongItemWidget(0, height - 20, width / 3, 20,
+                Component.translatable("x13.mod.link.mod"), new ItemStack(Blocks.GOLD_ORE), () -> {
             openLink(XrayMain.MOD_LINK);
         }));
-
-        addDrawableChild(new LongItemWidget(width * 1 / 3, height - 20, width / 3, 20,
-                Text.translatable("x13.mod.link.issue"), new ItemStack(Blocks.TNT), () -> {
+        addRenderableWidget(new LongItemWidget(width / 3, height - 20, width / 3, 20,
+                Component.translatable("x13.mod.link.issue"), new ItemStack(Blocks.TNT), () -> {
             openLink(XrayMain.MOD_ISSUE);
         }));
-
-        addDrawableChild(new LongItemWidget(width * 2 / 3, height - 20, width - width * 2 / 3, 20,
-                Text.translatable("x13.mod.link.source"), new ItemStack(Items.PAPER), () -> {
+        addRenderableWidget(new LongItemWidget(width * 2 / 3, height - 20, width - width * 2 / 3, 20,
+                Component.translatable("x13.mod.link.source"), new ItemStack(Items.PAPER), () -> {
             openLink(XrayMain.MOD_SOURCE);
         }));
-
         super.init();
     }
 
     private void openLink(URL url) {
         try {
-            Util.getOperatingSystem().open(url.toURI());
-        } catch (Exception ignore) {
+            Util.getPlatform().openUri(url.toURI());
+        } catch (Exception e) {
         }
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderInGameBackground(context);
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2,
-                height / 2 - 52 - textRenderer.fontHeight, 0xffffffff);
-        super.render(context, mouseX, mouseY, delta);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        renderBackground(graphics, mouseX, mouseY, delta);
+        graphics.drawCenteredString(font, title, width / 2,
+                height / 2 - 52 - font.lineHeight, 0xffffffff);
+        super.render(graphics, mouseX, mouseY, delta);
     }
 }

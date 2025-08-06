@@ -1,11 +1,11 @@
 package fr.atesab.xray.color;
 
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,27 +52,26 @@ public record BlockEntityTypeIcon(BlockEntityType<?> entity, ItemStack icon) {
     public static final BlockEntityTypeIcon SCULK_CATALYST = register(BlockEntityType.SCULK_CATALYST, Items.SCULK_CATALYST);
     public static final BlockEntityTypeIcon SCULK_SHRIEKER = register(BlockEntityType.SCULK_SHRIEKER, Items.SCULK_SHRIEKER);
 
-    public static BlockEntityTypeIcon register(BlockEntityType<?> type, ItemConvertible icon) {
+    public static BlockEntityTypeIcon register(BlockEntityType<?> type, ItemLike icon) {
         return register(type, new ItemStack(icon));
     }
 
     public static BlockEntityTypeIcon register(BlockEntityType<?> type, ItemStack icon) {
-        Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(type);
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(type);
         if (id != null) {
-            ICONS.put(id.toTranslationKey(), icon);
+            ICONS.put(id.toLanguageKey(), icon);
         }
 
         return new BlockEntityTypeIcon(type, icon);
     }
 
-    @SuppressWarnings("deprecation")
     public static ItemStack getIcon(BlockEntityType<?> type) {
-        Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(type);
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(type);
         if (id == null) {
             return DEFAULT_ICON;
         }
 
-        ItemStack icon = ICONS.get(id.toTranslationKey());
+        ItemStack icon = ICONS.get(id.toLanguageKey());
 
         if (icon != null) {
             return icon;

@@ -10,7 +10,7 @@ import fr.atesab.xray.color.ColorSupplier;
 import fr.atesab.xray.color.IColorObject;
 import fr.atesab.xray.utils.KeyData;
 import fr.atesab.xray.utils.KeyInput;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 public abstract class AbstractModeConfig implements IColorObject {
     private static final AtomicInteger IDS = new AtomicInteger();

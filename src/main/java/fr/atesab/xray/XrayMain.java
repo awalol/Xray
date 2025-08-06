@@ -1,49 +1,37 @@
 package fr.atesab.xray;
 
+import java.io.File;
+import java.net.URL;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
-import fr.atesab.xray.color.ColorSupplier;
-import fr.atesab.xray.color.IColorObject;
-import fr.atesab.xray.color.TextHudBuffer;
-import fr.atesab.xray.config.*;
-import fr.atesab.xray.screen.XrayMenu;
-import fr.atesab.xray.utils.GuiUtils;
-import fr.atesab.xray.utils.GuiUtils.RGBResult;
-import fr.atesab.xray.utils.KeyInput;
-import fr.atesab.xray.utils.RenderUtils;
-import fr.atesab.xray.utils.XrayUtils;
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.EndTick;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AfterEntities;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gl.ShaderProgramKeys;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.option.SimpleOption;
-import net.minecraft.client.render.*;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.*;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkStatus;
+import com.mojang.blaze3d.vertex.*;
+
+import net.minecraft.client.*;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.client.event.*;
+import net.neoforged.neoforge.common.NeoForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3f;
@@ -51,239 +39,276 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.io.File;
-import java.net.URL;
-import java.util.*;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
+import fr.atesab.xray.color.ColorSupplier;
+import fr.atesab.xray.color.IColorObject;
+import fr.atesab.xray.color.TextHudBuffer;
+import fr.atesab.xray.config.AbstractModeConfig;
+import fr.atesab.xray.config.BlockConfig;
+import fr.atesab.xray.config.ESPConfig;
+import fr.atesab.xray.config.LocationFormatTool;
+import fr.atesab.xray.config.XrayConfig;
+import fr.atesab.xray.screen.XrayMenu;
+import fr.atesab.xray.utils.GuiUtils;
+import fr.atesab.xray.utils.GuiUtils.RGBResult;
+import fr.atesab.xray.utils.KeyInput;
+import fr.atesab.xray.utils.RenderUtils;
+import fr.atesab.xray.utils.XrayUtils;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTick, AfterEntities {
-    public static final String MOD_ID = "atianxray";
-    public static final String MOD_NAME = "Xray";
-    public static final String[] MOD_AUTHORS = {"ATE47", "ThaEin", "ALFECLARE"};
-    public static final URL MOD_SOURCE = XrayUtils.soWhat(() -> new URL("https://github.com/ate47/Xray"));
-    public static final URL MOD_ISSUE = XrayUtils.soWhat(() -> new URL("https://github.com/ate47/Xray/issues"));
-    public static final URL MOD_LINK = XrayUtils
-            .soWhat(() -> new URL("https://www.curseforge.com/minecraft/mc-mods/xray-1-13-rift-modloader"));
-    private static final int maxFullbrightStates = 20;
-    private static final Logger log = LogManager.getLogger(MOD_ID);
+@Mod(XrayMain.MOD_ID)
+public class XrayMain {
+	public static final String MOD_ID = "atianxray";
+	public static final String MOD_NAME = "Xray";
+	public static final String[] MOD_AUTHORS = { "ATE47", "ThaEin", "ALFECLARE" };
+	public static final URL MOD_SOURCE = XrayUtils.soWhat(() -> new URL("https://github.com/ate47/Xray"));
+	public static final URL MOD_ISSUE = XrayUtils.soWhat(() -> new URL("https://github.com/ate47/Xray/issues"));
+	public static final URL MOD_LINK = XrayUtils
+			.soWhat(() -> new URL("https://www.curseforge.com/minecraft/mc-mods/xray-1-13-rift-modloader"));
+	private static final int maxFullbrightStates = 20;
+	private static final Logger log = LogManager.getLogger(MOD_ID);
 
-    private static XrayMain instance;
+	private static XrayMain instance;
 
-    private boolean fullBrightEnable = false;
+	private final OptionInstance<Double> gammaBypass = new OptionInstance<>(
+			"options.gamma", OptionInstance.noTooltip(), (optionText, value) -> Component.empty(), OptionInstance.UnitDouble.INSTANCE.xmap(
+			d -> (double) getInternalFullbrightState(), d -> 1
+	), 0.5, value -> {});
 
-    private int internalFullbrightState = 0;
+	private boolean fullBrightEnable = false;
 
-    private KeyBinding configKey, fullbrightKey, locationEnableKey;
+	private int internalFullbrightState = 0;
 
-    private XrayConfig config;
+	private KeyMapping configKey, fullbrightKey, locationEnableKey;
 
-    private int fullbrightColor = 0;
+	private XrayConfig config;
 
-    private final SimpleOption<Double> gammaBypass = new SimpleOption<>("options.gamma", SimpleOption.emptyTooltip(), (optionText, value) -> Text.empty(), SimpleOption.DoubleSliderCallbacks.INSTANCE.withModifier(
-            d -> (double) getInternalFullbrightState(), d -> 1
-    ), 0.5, value -> {
-    });
+	private int fullbrightColor = 0;
 
-    private final IColorObject fullbrightMode = new IColorObject() {
-        public int getColor() {
-            return fullbrightColor;
-        }
+	private final IColorObject fullbrightMode = new IColorObject() {
+		public int getColor() {
+			return fullbrightColor;
+		}
 
-        public String getModeName() {
-            return I18n.translate("x13.mod.fullbright");
-        }
-    };
+		public String getModeName() {
+			return I18n.get("x13.mod.fullbright");
+		}
+	};
 
-    /**
-     * Toggle fullBright
-     */
-    public XrayMain fullBright() {
-        return fullBright(!fullBrightEnable);
-    }
+	/**
+	 * Toggle fullBright
+	 */
+	public XrayMain fullBright() {
+		return fullBright(!fullBrightEnable);
+	}
 
-    /**
-     * @return the gamma option
-     */
-    public SimpleOption<Double> getGammaBypass() {
-        // force value
-        gammaBypass.setValue(1.0);
-        return gammaBypass;
-    }
+	/**
+	 * Set fullBright
+	 */
+	public XrayMain fullBright(boolean enable) {
+		fullBrightEnable = enable;
+		return internalFullbright();
+	}
 
-    /**
-     * Set fullBright
-     */
-    public XrayMain fullBright(boolean enable) {
-        fullBrightEnable = enable;
-        return internalFullbright();
-    }
+	@SuppressWarnings("deprecation")
+	public static <T> T getBlockNamesCollected(Collection<Block> blocks, Collector<CharSequence, ?, T> collector) {
+		// BLOCK
+		return blocks.stream().filter(b -> !Blocks.AIR.equals(b)).map(BuiltInRegistries.BLOCK::getId).map(Objects::toString).collect(collector);
+	}
 
-    public static <T> T getBlockNamesCollected(Collection<Block> blocks, Collector<CharSequence, ?, T> collector) {
-        // BLOCK
-        return blocks.stream().filter(b -> !Blocks.AIR.equals(b)).map(Registries.BLOCK::getId).map(Objects::toString).collect(collector);
-    }
+	/**
+	 * get a list of block names from a list of blocks
+	 */
+	public static List<CharSequence> getBlockNamesToList(Collection<Block> blocks) {
+		return getBlockNamesCollected(blocks, Collectors.toList());
+	}
 
-    /**
-     * get a list of block names from a list of blocks
-     */
-    public static List<CharSequence> getBlockNamesToList(Collection<Block> blocks) {
-        return getBlockNamesCollected(blocks, Collectors.toList());
-    }
+	/**
+	 * get a String of a list of block names join by space from a list of blocks
+	 */
+	public static String getBlockNamesToString(Collection<Block> blocks) {
+		return getBlockNamesCollected(blocks, Collectors.joining(" "));
+	}
 
-    /**
-     * get a String of a list of block names join by space from a list of blocks
-     */
-    public static String getBlockNamesToString(Collection<Block> blocks) {
-        return getBlockNamesCollected(blocks, Collectors.joining(" "));
-    }
+	/**
+	 * load internal fullbright by checking if a mode is enabled
+	 */
+	public XrayMain internalFullbright() {
+		if (fullBrightEnable) {
+			if (internalFullbrightState == 0)
+				internalFullbrightState = 1;
+			return this;
+		}
+		boolean modeEnabled = config.getSelectedBlockMode() != null;
 
-    /**
-     * load internal fullbright by checking if a mode is enabled
-     */
-    public XrayMain internalFullbright() {
-        if (fullBrightEnable) {
-            if (internalFullbrightState == 0)
-                internalFullbrightState = 1;
-            return this;
-        }
-        boolean modeEnabled = config.getSelectedBlockMode() != null;
+		if (modeEnabled) {
+			internalFullbrightState = maxFullbrightStates;
+		} else {
+			internalFullbrightState = 0;
+		}
+		return this;
+	}
 
-        if (modeEnabled) {
-            internalFullbrightState = maxFullbrightStates;
-        } else {
-            internalFullbrightState = 0;
-        }
-        return this;
-    }
+	public XrayConfig getConfig() {
+		return config;
+	}
 
-    public XrayConfig getConfig() {
-        return config;
-    }
+	public boolean isFullBrightEnable() {
+		return fullBrightEnable;
+	}
 
-    public boolean isFullBrightEnable() {
-        return fullBrightEnable;
-    }
+	public boolean isInternalFullbrightEnable() {
+		return getInternalFullbrightState() != 0;
+	}
 
-    public boolean isInternalFullbrightEnable() {
-        return getInternalFullbrightState() != 0;
-    }
+	/**
+	 * @return the internalFullbrightEnable
+	 */
+	public float getInternalFullbrightState() {
+		return 20f * internalFullbrightState / maxFullbrightStates;
+	}
+	/**
+	 * @return the gamma option
+	 */
+	public OptionInstance<Double> getGammaBypass() {
+		// force value
+		gammaBypass.set(1.0);
+		return gammaBypass;
+	}
 
-    /**
-     * @return the internalFullbrightEnable
-     */
-    public float getInternalFullbrightState() {
-        return 20f * internalFullbrightState / maxFullbrightStates;
-    }
 
-    private static void log(String message) {
-        log.info("[{}] {}", log.getName(), message);
-    }
+	private static void log(String message) {
+		log.info("[{}] {}", log.getName(), message);
+	}
 
-    /**
-     * Reload modules
-     */
-    public XrayMain modules() {
-        fullBright(isFullBrightEnable());
-        try {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.worldRenderer != null)
-                mc.worldRenderer.reload();
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-        }
-        return this;
-    }
+	/**
+	 * Reload modules
+	 */
+	public XrayMain modules() {
+		fullBright(isFullBrightEnable());
+		try {
+			Minecraft mc = Minecraft.getInstance();
+			if (mc.levelRenderer != null)
+				mc.levelRenderer.allChanged();
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
+		}
+		return this;
+	}
 
-    public void shouldSideBeRendered(BlockState state, BlockState adjacentState, CallbackInfoReturnable<Boolean> ci) {
-        if (ci == null)
-            ci = new CallbackInfoReturnable<>("shouldSideBeRendered", true);
+	public int shouldSideBeRendered(BlockState adjacentState, BlockGetter blockState, BlockPos blockAccess,
+			Direction pos, CallbackInfoReturnable<Boolean> ci) {
+		if (ci == null)
+			ci = new CallbackInfoReturnable<>("shouldSideBeRendered", true);
 
-        for (BlockConfig mode : getConfig().getBlockConfigs()) {
-            mode.shouldSideBeRendered(state, adjacentState, ci);
-        }
-    }
+		for (BlockConfig mode : getConfig().getBlockConfigs()) {
+			mode.shouldSideBeRendered(adjacentState, blockState, blockAccess, pos, ci);
+		}
+		if (ci.isCancelled())
+			return ci.getReturnValue().booleanValue() ? 0 : 1;
+		return 2;
+	}
 
-    public static String significantNumbers(double d) {
-        boolean a = d < 0;
-        if (a) {
-            d *= -1;
-        }
-        int d1 = (int) (d);
-        d %= 1;
-        String s = String.format("%.3G", d);
-        if (s.length() > 0)
-            s = s.substring(1);
-        if (s.contains("E+"))
-            s = String.format(Locale.US, "%.0f", Double.valueOf(String.format("%.3G", d)));
-        return (a ? "-" : "") + d1 + s;
-    }
+	public static String significantNumbers(double d) {
+		boolean a = d < 0;
+		if (a) {
+			d *= -1;
+		}
+		int d1 = (int) (d);
+		d %= 1;
+		String s = String.format("%.3G", d);
+		if (s.length() > 0)
+			s = s.substring(1);
+		if (s.contains("E+"))
+			s = String.format(Locale.US, "%.0f", Double.valueOf(String.format("%.3G", d)));
+		return (a ? "-" : "") + d1 + s;
+	}
 
-    public XrayMain() {
-        instance = this;
-    }
+	public XrayMain(IEventBus bus, ModContainer modContainer) {
+		instance = this;
+		bus.addListener(this::setup);
+		bus.addListener(this::registerKeyBinding);
 
-    /**
-     * get this mod
-     */
-    public static XrayMain getMod() {
-        return instance;
-    }
+		NeoForge.EVENT_BUS.register(this);
+	}
 
-    /**
-     * Mod config file
-     */
-    public static File getSaveFile() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        return new File(mc.runDirectory, "config/xray2.json");
-    }
+	/**
+	 * get this mod
+	 */
+	public static XrayMain getMod() {
+		return instance;
+	}
 
-    /**
-     * Load mod configs
-     */
-    public void loadConfigs() {
-        config = XrayConfig.sync(getSaveFile());
-    }
+	/**
+	 * Mod config file
+	 */
+	public static File getSaveFile() {
+		Minecraft mc = Minecraft.getInstance();
+		return new File(mc.gameDirectory, "config/xray2.json");
+	}
 
-    @Override
-    public void onEndTick(MinecraftClient client) {
-        if (internalFullbrightState != 0 && internalFullbrightState < maxFullbrightStates) {
-            internalFullbrightState++;
-        }
-    }
+	/**
+	 * Load mod configs
+	 */
+	public void loadConfigs() {
+		config = XrayConfig.sync(getSaveFile());
+	}
 
-    public void onKeyEvent(KeyInput input) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.currentScreen != null)
-            return;
+	@SubscribeEvent
+	public void onEndTickEvent(ClientTickEvent.Post ev) {
+		if (internalFullbrightState != 0 && internalFullbrightState < maxFullbrightStates) {
+			internalFullbrightState++;
+		}
+	}
 
-        if (InputUtil.isKeyPressed(MinecraftClient.getInstance().getWindow().getHandle(), input.key())) {
-            config.getModes().forEach(mode -> mode.onKeyInput(input));
-        }
+	@SubscribeEvent
+	public void onKeyEvent(InputEvent.Key ev) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.screen != null)
+			return;
 
-        if (fullbrightKey.wasPressed()) {
-            fullBright();
-        }
-        if (locationEnableKey.wasPressed()) {
-            config.getLocationConfig().setEnabled(!config.getLocationConfig().isEnabled());
-        }
-        if (configKey.wasPressed()) {
-            client.setScreen(new XrayMenu(null));
-        }
+		KeyInput input = new KeyInput(ev.getKey(), ev.getScanCode(), ev.getAction(), ev.getModifiers());
 
-    }
+		if (InputConstants.isKeyDown(Minecraft.getInstance().getWindow().getWindow(), input.key())) {
+			config.getModes().forEach(mode -> mode.onKeyInput(input));
+		}
 
-    @Override
-    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        TextRenderer render = mc.textRenderer;
-        ClientPlayerEntity player = mc.player;
+		if (fullbrightKey.consumeClick()) {
+			fullBright();
+		}
+		if (locationEnableKey.consumeClick()) {
+			config.getLocationConfig().setEnabled(!config.getLocationConfig().isEnabled());
+		}
+		if (configKey.consumeClick()) {
+			client.setScreen(new XrayMenu(null));
+		}
+	}
 
-        if (!config.getLocationConfig().isEnabled() || player == null || mc.getDebugHud().shouldShowDebugHud()) {
-            return;
-        }
+	@SubscribeEvent
+	public void onHudRender(CustomizeGuiOverlayEvent.Chat ev) {
+		GuiGraphics graphics = ev.getGuiGraphics();
+		Minecraft mc = Minecraft.getInstance();
+		Font render = mc.font;
+		LocalPlayer player = mc.player;
 
-        TextHudBuffer buffer = new TextHudBuffer();
+        //|| mc.options.renderDebug
+		if (!config.getLocationConfig().isEnabled() || player == null) {
+			return;
+		}
+
+		TextHudBuffer buffer = new TextHudBuffer();
 
         // TODO: add option to render the modes one line/mode
         buffer.newLine();
@@ -293,66 +318,63 @@ public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTic
                     continue;
                 }
                 buffer.append(
-                        Text.literal("[" + cfg.getModeName() + "] ")
-                        .styled(s -> s.withColor(cfg.getColor()))
+						Component.literal("[" + cfg.getModeName() + "] ")
+                        .withStyle(s -> s.withColor(cfg.getColor()))
                 );
             }
             if (fullBrightEnable) {
                 buffer.append(
-                        Text.literal("[" + fullbrightMode.getModeName() + "] ")
-                                .styled(s -> s.withColor(fullbrightMode.getColor()))
+						Component.literal("[" + fullbrightMode.getModeName() + "] ")
+                                .withStyle(s -> s.withColor(fullbrightMode.getColor()))
                 );
             }
         }
 
-        if (config.getLocationConfig().isEnabled()) {
-			Text[] format = LocationFormatTool.applyColor(
-					getConfig().getLocationConfig().getCompiledFormat().apply(mc, player, mc.world)
+		if (config.getLocationConfig().isEnabled()) {
+			Component[] format = LocationFormatTool.applyColor(
+					getConfig().getLocationConfig().getCompiledFormat().apply(mc, player, mc.level)
 			);
 
-            if (format.length > 0) {
-                buffer.append(format[0]);
+			if (format.length > 0) {
+				buffer.append(format[0]);
 
-                for (int i = 1; i < format.length; i++) {
-                    buffer.newLine();
-                    buffer.append(format[i]);
-                }
-            }
-        }
+				for (int i = 1; i < format.length; i++) {
+					buffer.newLine();
+					buffer.append(format[i]);
+				}
+			}
+		}
 
-        buffer.draw(
-                context,
-                mc.getWindow().getScaledWidth(),
-                mc.getWindow().getScaledHeight(),
-                config.getLocationConfig(),
-                render
-        );
+		buffer.draw(
+				graphics,
+				mc.getWindow().getGuiScaledWidth(),
+				mc.getWindow().getGuiScaledHeight(),
+				config.getLocationConfig(),
+				render
+		);
     }
 
-    @Override
-    public void afterEntities(WorldRenderContext context) {
-        MinecraftClient minecraft = MinecraftClient.getInstance();
-        ClientWorld level = minecraft.world;
-        ClientPlayerEntity player = minecraft.player;
-        MatrixStack stack = context.matrixStack();
-        float delta = context.tickCounter().getTickDelta(false);
-        Camera mainCamera = minecraft.gameRenderer.getCamera();
-        Vec3d camera = mainCamera.getPos();
+	@SubscribeEvent
+	public void onRenderWorld(RenderLevelStageEvent ev) {
+		if (ev.getStage() != RenderLevelStageEvent.Stage.AFTER_WEATHER) {
+			return;
+		}
+		Minecraft minecraft = Minecraft.getInstance();
+		ClientLevel level = minecraft.level;
+		LocalPlayer player = minecraft.player;
+		if (level == null || player == null) {
+			return;
+		}
+		PoseStack stack = ev.getPoseStack();
+		DeltaTracker delta = ev.getPartialTick();
+		Camera mainCamera = minecraft.gameRenderer.getMainCamera();
+		Vec3 camera = mainCamera.getPosition();
 
-        if (player == null || level == null || config.getEspConfigs().stream().noneMatch(ESPConfig::isEnabled)) {
-            return;
-        }
-
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        // RenderSystem.depthMask(false);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
 		if (config.getEspConfigs().stream().noneMatch(ESPConfig::isEnabled)) {
 			return;
 		}
 
-		RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+		RenderSystem.setShader(GameRenderer::getPositionColorShader);
 		RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 		// RenderSystem.depthMask(false);
 		RenderSystem.disableDepthTest();
@@ -363,22 +385,24 @@ public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTic
 		RenderSystem.depthMask(false);
 		RenderSystem.depthFunc(GL11.GL_NEVER);
 
-		Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+		Tesselator tessellator = Tesselator.getInstance();
+		BufferBuilder buffer = tessellator.begin(VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
 
-		stack.push();
+		stack.pushPose();
 
+		RenderSystem.applyModelViewMatrix();
+		stack.setIdentity();
 		stack.translate(-camera.x, -camera.y, -camera.z);
-		Vector3f look = mainCamera.getHorizontalPlane();
-		float px = (float) (player.prevX + (player.getX() - player.prevX) * delta) + look.x();
-		float py = (float) (player.prevY + (player.getY() - player.prevY) * delta) + player.getEyeHeight(player.getPose()) + look.y();
-		float pz = (float) (player.prevZ + (player.getZ() - player.prevZ) * delta) + look.z();
+		Vector3f look = mainCamera.getLookVector();
+		float px = (float) (player.xOld + (player.getX() - player.xOld) * delta.getGameTimeDeltaTicks()) + look.x();
+		float py = (float) (player.yOld + (player.getY() - player.yOld) * delta.getGameTimeDeltaTicks()) + player.getEyeHeight() + look.y();
+		float pz = (float) (player.zOld + (player.getZ() - player.zOld) * delta.getGameTimeDeltaTicks()) + look.z();
 
 		int maxDistanceSquared = (config.getMaxTracerRange() * config.getMaxTracerRange());
-        int distance = minecraft.options.getClampedViewDistance();
-        ChunkPos chunkPos = player.getChunkPos();
-        int chunkX = chunkPos.x;
-        int chunkZ = chunkPos.z;
+		int distance = minecraft.options.getEffectiveRenderDistance();
+		ChunkPos chunkPos = player.chunkPosition();
+		int chunkX = chunkPos.x;
+		int chunkZ = chunkPos.z;
 
 		if (config.getEspConfigs().stream().anyMatch(ESPConfig::hasBlockEsp)) {
 			for (int i = chunkX - distance; i <= chunkX + distance; i++) {
@@ -394,10 +418,10 @@ public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTic
 						continue;
 					}
 
-					Chunk chunk = level.getChunk(i, j, ChunkStatus.FULL, false);
+					ChunkAccess chunk = level.getChunk(i, j, ChunkStatus.FULL, false);
 					if (chunk != null) {
-						chunk.getBlockEntityPositions().forEach(((blockPos) -> {
-							if ((config.getMaxTracerRange() != 0 && blockPos.getSquaredDistance(player.getPos()) > maxDistanceSquared)) {
+						chunk.getBlockEntitiesPos().forEach(((blockPos) -> {
+							if ((config.getMaxTracerRange() != 0 && blockPos.distSqr(player.blockPosition()) > maxDistanceSquared)) {
 								return;
 							}
 
@@ -416,15 +440,15 @@ public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTic
 								float b = c.blue() / 255F;
 								float a = c.alpha() / 255F;
 
-								Box aabb = new Box(
+								AABB aabb = new AABB(
 										blockPos.getX(), blockPos.getY(), blockPos.getZ(),
 										blockPos.getX() + 1, blockPos.getY() + 1, blockPos.getZ() + 1
 								);
 
-								VertexRendering.drawBox(stack, buffer, aabb, r, g, b, a);
+								LevelRenderer.renderLineBox(stack, buffer, aabb, r, g, b, a);
 
 								if (esp.hasTracer()) {
-									Vec3d center = aabb.getCenter();
+									Vec3 center = aabb.getCenter();
 									RenderUtils.renderSingleLine(stack, buffer, px, py, pz, (float) center.x,
 											(float) center.y, (float) center.z, r, g, b, a);
 								}
@@ -435,82 +459,85 @@ public class XrayMain implements ClientModInitializer, HudRenderCallback, EndTic
 			}
 		}
 
-        level.getEntities().forEach(e -> {
+		level.entitiesForRendering().forEach(e -> {
 
-            if ((config.getMaxTracerRange() != 0 && e.squaredDistanceTo(player) > maxDistanceSquared) || player == e)
-                return;
+			if ((config.getMaxTracerRange() != 0 && e.distanceToSqr(player) > maxDistanceSquared) || player == e) {
+				return;
+			}
 
-            boolean damage = !config.isDamageIndicatorDisabled() && e instanceof LivingEntity le && le.getRecentDamageSource() != null;
+			EntityType<?> type = e.getType();
 
-            EntityType<?> type = e.getType();
+			boolean damage = !config.isDamageIndicatorDisabled() && e instanceof LivingEntity le && le.getLastDamageSource() != null;
 
-            config.getEspConfigs().stream().filter(esp -> esp.shouldTag(type)).forEach(esp -> {
-                double x = e.prevX + (e.getX() - e.prevX) * delta;
-                double y = e.prevY + (e.getY() - e.prevY) * delta;
-                double z = e.prevZ + (e.getZ() - e.prevZ) * delta;
+			config.getEspConfigs().stream().filter(esp -> esp.shouldTag(type)).forEach(esp -> {
+				double x = e.xOld + (e.getX() - e.xOld) * delta.getGameTimeDeltaTicks();
+				double y = e.yOld + (e.getY() - e.yOld) * delta.getGameTimeDeltaTicks();
+				double z = e.zOld + (e.getZ() - e.zOld) * delta.getGameTimeDeltaTicks();
 
-                float r, g, b, a;
+				float r, g, b, a;
 
-                if (damage) {
-                    r = 1;
-                    g = 0;
-                    b = 0;
-                    a = 1;
-                } else {
-                    RGBResult c = GuiUtils.rgbaFromRGBA(esp.getColor());
-                    r = c.red() / 255F;
-                    g = c.green() / 255F;
-                    b = c.blue() / 255F;
-                    a = c.alpha() / 255F;
-                }
+				if (damage) {
+					r = 1;
+					g = 0;
+					b = 0;
+					a = 1;
+				} else {
+					RGBResult c = GuiUtils.rgbaFromRGBA(esp.getColor());
+					r = c.red() / 255F;
+					g = c.green() / 255F;
+					b = c.blue() / 255F;
+					a = c.alpha() / 255F;
+				}
 
-                Box aabb = type.getSpawnBox(x, y, z);
+				AABB aabb = type.getSpawnAABB(x, y, z);
 
-                VertexRendering.drawBox(stack, buffer, aabb, r, g, b, a);
+				LevelRenderer.renderLineBox(stack, buffer, aabb, r, g, b, a);
 
-                if (esp.hasTracer()) {
-                    Vec3d center = aabb.getCenter();
-                    RenderUtils.renderSingleLine(stack, buffer, px, py, pz, (float) center.x,
-                            (float) center.y, (float) center.z, r, g, b, a);
-                }
-            });
-        });
-        try { BufferRenderer.drawWithGlobalProgram(buffer.end()); } catch(IllegalStateException state) { System.out.println(state.getMessage());}
-        stack.pop();
-        RenderSystem.disableBlend();
-        RenderSystem.setShaderColor(1, 1, 1, 1);
+				if (esp.hasTracer()) {
+					Vec3 center = aabb.getCenter();
+					RenderUtils.renderSingleLine(stack, buffer, px, py, pz, (float) center.x,
+							(float) center.y, (float) center.z, r, g, b, a);
+				}
+			});
+		});
+		tessellator.clear();
+		stack.popPose();
+		RenderSystem.disableBlend();
+		RenderSystem.applyModelViewMatrix();
+		RenderSystem.setShaderColor(1, 1, 1, 1);
 		RenderSystem.enableDepthTest();
 		RenderSystem.depthMask(true);
 		RenderSystem.lineWidth(1.0F);
 		RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        GL11.glDisable(GL11.GL_LINE_SMOOTH);
-    }
+		GL11.glDisable(GL11.GL_LINE_SMOOTH);
+	}
 
-    /**
-     * Save mod configs
-     */
-    public void saveConfigs() {
-        config.save();
-        modules();
-    }
+	/**
+	 * Save mod configs
+	 */
+	public void saveConfigs() {
+		config.save();
+		modules();
+	}
 
-    @Override
-    public void onInitializeClient() {
-        log("Initialization");
-        fullbrightColor = ColorSupplier.DEFAULT.getColor();
-        loadConfigs();
+	private void registerKeyBinding(final RegisterKeyMappingsEvent ev) {
+		fullbrightKey = new KeyMapping("x13.mod.fullbright", GLFW.GLFW_KEY_H, "key.categories.xray");
+		configKey = new KeyMapping("x13.mod.config", GLFW.GLFW_KEY_N, "key.categories.xray");
+		locationEnableKey = new KeyMapping("x13.mod.locationEnable", GLFW.GLFW_KEY_J, "key.categories.xray");
 
-        fullbrightKey = new KeyBinding("x13.mod.fullbright", GLFW.GLFW_KEY_H, "key.categories.xray");
-        KeyBindingHelper.registerKeyBinding(fullbrightKey);
+		ev.register(fullbrightKey);
+		ev.register(configKey);
+		ev.register(locationEnableKey);
+	}
 
-        locationEnableKey = new KeyBinding("x13.mod.locationEnable", GLFW.GLFW_KEY_J, "key.categories.xray");
-        KeyBindingHelper.registerKeyBinding(locationEnableKey);
+	private void setup(final FMLCommonSetupEvent event) {
+		log("Initialization");
+		fullbrightColor = ColorSupplier.DEFAULT.getColor();
+		loadConfigs();
 
-        configKey = new KeyBinding("x13.mod.config", GLFW.GLFW_KEY_N, "key.categories.xray");
-        KeyBindingHelper.registerKeyBinding(configKey);
-
-        HudRenderCallback.EVENT.register(this);
-        ClientTickEvents.END_CLIENT_TICK.register(this);
-        WorldRenderEvents.AFTER_ENTITIES.register(this);
-    }
+//		ModList.get().getModContainerById(MOD_ID).ifPresent(con -> {
+//			con.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+//					() -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new XrayMenu(parent)));
+//		});
+	}
 }

@@ -1,26 +1,26 @@
 package fr.atesab.xray.screen;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import fr.atesab.xray.XrayMain;
 import fr.atesab.xray.config.LocationConfig;
 import fr.atesab.xray.config.XrayConfig;
 import fr.atesab.xray.widget.XrayButton;
 import fr.atesab.xray.widget.XraySlider;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 public class XrayLocationConfigBoxScreen extends XrayScreen {
     public XrayLocationConfigBoxScreen(Screen parent) {
-        super(Text.translatable("x13.mod.location.hud"), parent);
+        super(Component.translatable("x13.mod.location.hud"), parent);
     }
 
-    private Text getLocationButtonText(LocationConfig cfg) {
-        return Text.translatable("x13.mod.location.hud.corner")
+    private Component getLocationButtonText(LocationConfig cfg) {
+        return Component.translatable("x13.mod.location.hud.corner")
                 .append(": ")
-                .append(cfg.getLocation().getTranslationText().styled(s -> s.withColor(Formatting.GOLD)));
+                .append(cfg.getLocation().getTranslationText().withStyle(ChatFormatting.GOLD));
     }
 
     @Override
@@ -28,7 +28,7 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
         XrayConfig cfg = XrayMain.getMod().getConfig();
 
         XraySlider sliderShiftX = new XraySlider(width / 2 - 100, height / 2 - 24, 200, 20,
-                Text.translatable("x13.mod.location.hud.shift.x"), cfg.getLocationConfig().getShiftX()) {
+                Component.translatable("x13.mod.location.hud.shift.x"), cfg.getLocationConfig().getShiftX()) {
             {
                 updateMessage();
             }
@@ -36,10 +36,10 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
             @Override
             protected void updateMessage() {
                 float percentage = cfg.getLocationConfig().getShiftX();
-                MutableText shift = Text.translatable("x13.mod.location.hud.shift.x").append(": ");
+                MutableComponent shift = Component.translatable("x13.mod.location.hud.shift.x").append(": ");
                 setMessage(shift.append(
-                        Text.literal((int) (percentage * 100) + "%")
-                                .styled(s -> s.withColor(Formatting.GOLD))
+                        Component.literal((int) (percentage * 100) + "%")
+                                .withStyle(ChatFormatting.GOLD)
                 ));
             }
 
@@ -50,7 +50,7 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
 
         };
         XraySlider sliderShiftY = new XraySlider(width / 2 - 100, height / 2, 200, 20,
-                Text.translatable("x13.mod.location.hud.shift.y"), cfg.getLocationConfig().getShiftX()) {
+                Component.translatable("x13.mod.location.hud.shift.y"), cfg.getLocationConfig().getShiftX()) {
             {
                 updateMessage();
             }
@@ -58,10 +58,10 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
             @Override
             protected void updateMessage() {
                 float percentage = cfg.getLocationConfig().getShiftY();
-                MutableText shift = Text.translatable("x13.mod.location.hud.shift.y").append(": ");
+                MutableComponent shift = Component.translatable("x13.mod.location.hud.shift.y").append(": ");
                 setMessage(shift.append(
-                        Text.literal((int) (percentage * 100) + "%")
-                                .styled(s -> s.withColor(Formatting.GOLD))
+                        Component.literal((int) (percentage * 100) + "%")
+                                .withStyle(ChatFormatting.GOLD)
                 ));
             }
 
@@ -72,21 +72,20 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
 
         };
 
-        ButtonWidget locationButton = XrayButton.builder(getLocationButtonText(cfg.getLocationConfig()), btn -> {
+        XrayButton locationButton = new XrayButton(width / 2 - 100, height / 2 - 48, 200, 20,
+                getLocationButtonText(cfg.getLocationConfig()), btn -> {
                     cfg.getLocationConfig().setLocation(cfg.getLocationConfig().getLocation().next());
                     sliderShiftX.setValue(cfg.getLocationConfig().getShiftX());
                     sliderShiftY.setValue(cfg.getLocationConfig().getShiftY());
                     btn.setMessage(getLocationButtonText(cfg.getLocationConfig()));
-                })
-                .dimensions(width / 2 - 100, height / 2 - 48, 200, 20)
-                .build();
+                });
 
-        addDrawableChild(sliderShiftX);
-        addDrawableChild(sliderShiftY);
-        addDrawableChild(locationButton);
+        addRenderableWidget(sliderShiftX);
+        addRenderableWidget(sliderShiftY);
+        addRenderableWidget(locationButton);
 
         XraySlider fontSizeSlider = new XraySlider(width / 2 - 100, height / 2 + 24, 200, 20,
-                Text.translatable("x13.mod.location.hud.fontSize"), cfg.getLocationConfig().getFontSizeMultiplierNormalized()) {
+                Component.translatable("x13.mod.location.hud.fontSize"), cfg.getLocationConfig().getFontSizeMultiplierNormalized()) {
             {
                 updateMessage();
             }
@@ -94,8 +93,8 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
             @Override
             protected void updateMessage() {
                 float size = cfg.getLocationConfig().getFontSizeMultiplier();
-                setMessage(Text.translatable("x13.mod.location.hud.fontSize").append(": ")
-                        .append(Text.literal(String.format("%.1f", size)).styled(s -> s.withColor(Formatting.GOLD))));
+                setMessage(Component.translatable("x13.mod.location.hud.fontSize").append(": ")
+                        .append(Component.literal(String.format("%.1f", size)).withStyle(ChatFormatting.GOLD)));
             }
 
             @Override
@@ -104,11 +103,11 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
             }
 
         };
-        addDrawableChild(fontSizeSlider);
+        addRenderableWidget(fontSizeSlider);
 
-        addDrawableChild(
-                XrayButton.builder(
-                        Text.translatable("x13.mod.location.reset"),
+        addRenderableWidget(
+                new XrayButton(width / 2 - 100, height / 2 + 48, 200, 20,
+                        Component.translatable("x13.mod.location.reset"),
                         btn -> {
                             cfg.getLocationConfig().setLocation(LocationConfig.LocationLocation.TOP_LEFT);
                             cfg.getLocationConfig().setFontSizeMultiplier(1);
@@ -118,18 +117,18 @@ public class XrayLocationConfigBoxScreen extends XrayScreen {
                             sliderShiftY.setValue(cfg.getLocationConfig().getShiftY());
                             fontSizeSlider.setValue(cfg.getLocationConfig().getFontSizeMultiplierNormalized());
                             locationButton.setMessage(getLocationButtonText(cfg.getLocationConfig()));
-                        }).dimensions(width / 2 - 100, height / 2 + 48, 200, 20).build());
+                        }));
 
-        assert client != null;
-        addDrawableChild(XrayButton.builder(Text.translatable("gui.done"), btn -> client.setScreen(parent))
-                .dimensions(width / 2 - 100, height / 2 + 76, 200, 20).build());
+        assert minecraft != null;
+        addRenderableWidget(new XrayButton(width / 2 - 100, height / 2 + 76, 200, 20,
+                Component.translatable("gui.done"), btn -> minecraft.setScreen(parent)));
 
         super.init();
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderInGameBackground(context);
-        super.render(context, mouseX, mouseY, delta);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        renderBackground(graphics,mouseX,mouseY,delta);
+        super.render(graphics, mouseX, mouseY, delta);
     }
 }
