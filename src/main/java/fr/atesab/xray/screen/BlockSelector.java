@@ -113,7 +113,7 @@ public abstract class BlockSelector extends XrayScreen {
         visible.clear();
         blocks.stream().filter(block -> I18n.get(block.getDescriptionId()).toLowerCase().contains(query))
                 .forEach(visible::add);
-        page = Math.min(visible.size(), page);
+        page = Math.min(visible.size() / elementByPage, page);
         updateArrows();
     }
 
